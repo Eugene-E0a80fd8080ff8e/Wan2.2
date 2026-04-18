@@ -1,5 +1,6 @@
 # Copyright 2024-2025 The Alibaba Wan Team Authors. All rights reserved.
 import gc
+import hashlib
 import logging
 import math
 import os
@@ -98,7 +99,7 @@ class WanS2V:
             self.init_on_cpu = False
 
         shard_fn = partial(shard_model, device_id=device_id)
-        self.text_encoder = T5EncoderModel(
+        self._t5_init_kwargs = dict(
             text_len=config.text_len,
             dtype=config.t5_dtype,
             device=torch.device('cpu'),
@@ -106,10 +107,20 @@ class WanS2V:
             tokenizer_path=os.path.join(checkpoint_dir, config.t5_tokenizer),
             shard_fn=shard_fn if t5_fsdp else None,
         )
+        self._t5_cache_dir = os.environ.get(
+            "WAN_T5_CACHE_DIR",
+            os.path.join(checkpoint_dir, "t5_embed_cache"))
+        self.text_encoder = None
 
-        self.vae = Wan2_1_VAE(
+        self._vae_init_kwargs = dict(
             vae_pth=os.path.join(checkpoint_dir, config.vae_checkpoint),
             device=self.device)
+        self._vae_dtype = torch.float
+        self._vae_device = self.device
+        self._vae_cache_dir = os.environ.get(
+            "WAN_VAE_CACHE_DIR",
+            os.path.join(checkpoint_dir, "vae_embed_cache"))
+        self.vae = None
 
         logging.info(f"Creating WanModel from {checkpoint_dir}")
         if not dit_fsdp:
@@ -128,9 +139,12 @@ class WanS2V:
             shard_fn=shard_fn,
             convert_model_dtype=convert_model_dtype)
 
-        self.audio_encoder = AudioEncoder(
-            model_id=os.path.join(checkpoint_dir,
-                                  "wav2vec2-large-xlsr-53-english"))
+        self._audio_encoder_model_id = os.path.join(
+            checkpoint_dir, "wav2vec2-large-xlsr-53-english")
+        self._audio_cache_dir = os.environ.get(
+            "WAN_AUDIO_CACHE_DIR",
+            os.path.join(checkpoint_dir, "audio_embed_cache"))
+        self.audio_encoder = None
 
         if use_sp:
             self.sp_size = get_world_size()
@@ -269,7 +283,7 @@ class WanS2V:
                 ],
                                      dim=2)
                 cond_lat = torch.stack(
-                    self.vae.encode(cond_lat.to(
+                    self._vae_encode(cond_lat.to(
                         self.param_dtype)))[:, :, lat_motion_frames:].to(
                             self.param_dtype)
 
@@ -280,7 +294,113 @@ class WanS2V:
             cond = None
         return cond
 
+    def _text_cache_path(self, text):
+        key_src = "|".join([
+            str(self._t5_init_kwargs["checkpoint_path"]),
+            str(self._t5_init_kwargs["dtype"]),
+            str(self._t5_init_kwargs["text_len"]),
+            text,
+        ])
+        h = hashlib.sha256(key_src.encode("utf-8")).hexdigest()
+        return os.path.join(self._t5_cache_dir, f"{h}.pt")
+
+    def _ensure_text_encoder(self):
+        if self.text_encoder is None:
+            logging.info("Loading T5EncoderModel (cache miss)")
+            self.text_encoder = T5EncoderModel(**self._t5_init_kwargs)
+        return self.text_encoder
+
+    def _encode_prompt(self, text, offload_model=True):
+        cache_path = self._text_cache_path(text)
+        if os.path.exists(cache_path):
+            logging.info(f"T5 embedding cache hit: {cache_path}")
+            cached = torch.load(cache_path, map_location="cpu")
+            return [t.to(self.device) for t in cached]
+
+        self._ensure_text_encoder()
+        if not self.t5_cpu:
+            self.text_encoder.model.to(self.device)
+            out = self.text_encoder([text], self.device)
+            if offload_model:
+                self.text_encoder.model.cpu()
+        else:
+            out = self.text_encoder([text], torch.device('cpu'))
+            out = [t.to(self.device) for t in out]
+
+        os.makedirs(self._t5_cache_dir, exist_ok=True)
+        tmp_path = cache_path + ".tmp"
+        torch.save([t.detach().cpu() for t in out], tmp_path)
+        os.replace(tmp_path, cache_path)
+        logging.info(f"T5 embedding cached: {cache_path}")
+        return out
+
+    def _tensor_fingerprint(self, t):
+        t = t.detach().cpu().contiguous()
+        meta = f"{t.dtype}|{tuple(t.shape)}|".encode("utf-8")
+        buf = t.to(torch.float32).numpy().tobytes()
+        return hashlib.sha256(meta + buf).hexdigest()
+
+    def _ensure_vae(self):
+        if self.vae is None:
+            logging.info("Loading Wan2_1_VAE (lazy)")
+            self.vae = Wan2_1_VAE(**self._vae_init_kwargs)
+            self._vae_dtype = self.vae.dtype
+            self._vae_device = self.vae.device
+        return self.vae
+
+    def _vae_encode(self, videos):
+        fp = self._tensor_fingerprint(videos)
+        cache_path = os.path.join(self._vae_cache_dir, f"enc_{fp}.pt")
+        if os.path.exists(cache_path):
+            logging.info(f"VAE encode cache hit: {cache_path}")
+            cached = torch.load(cache_path, map_location=self._vae_device)
+            return cached
+
+        self._ensure_vae()
+        out = self.vae.encode(videos)
+
+        os.makedirs(self._vae_cache_dir, exist_ok=True)
+        tmp_path = cache_path + ".tmp"
+        torch.save([t.detach().cpu() for t in out], tmp_path)
+        os.replace(tmp_path, cache_path)
+        logging.info(f"VAE encode cached: {cache_path}")
+        return out
+
+    def _vae_decode(self, zs):
+        self._ensure_vae()
+        return self.vae.decode(zs)
+
+    def _ensure_audio_encoder(self):
+        if self.audio_encoder is None:
+            logging.info("Loading AudioEncoder (lazy)")
+            self.audio_encoder = AudioEncoder(
+                model_id=self._audio_encoder_model_id)
+        return self.audio_encoder
+
+    def _audio_cache_path(self, audio_path, infer_frames):
+        digest = hashlib.sha256()
+        with open(audio_path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                digest.update(chunk)
+        meta = "|".join([
+            digest.hexdigest(),
+            str(self._audio_encoder_model_id),
+            str(self.fps),
+            str(infer_frames),
+            str(self.audio_sample_m),
+            str(self.param_dtype),
+        ])
+        h = hashlib.sha256(meta.encode("utf-8")).hexdigest()
+        return os.path.join(self._audio_cache_dir, f"{h}.pt")
+
     def encode_audio(self, audio_path, infer_frames):
+        cache_path = self._audio_cache_path(audio_path, infer_frames)
+        if os.path.exists(cache_path):
+            logging.info(f"Audio embedding cache hit: {cache_path}")
+            cached = torch.load(cache_path, map_location=self.device)
+            return cached["embed"], int(cached["num_repeat"])
+
+        self._ensure_audio_encoder()
         z = self.audio_encoder.extract_audio_feat(
             audio_path, return_all_layers=True)
         audio_embed_bucket, num_repeat = self.audio_encoder.get_audio_embed_bucket_fps(
@@ -292,6 +412,15 @@ class WanS2V:
             audio_embed_bucket = audio_embed_bucket.permute(0, 2, 1)
         elif len(audio_embed_bucket.shape) == 4:
             audio_embed_bucket = audio_embed_bucket.permute(0, 2, 3, 1)
+
+        os.makedirs(self._audio_cache_dir, exist_ok=True)
+        tmp_path = cache_path + ".tmp"
+        torch.save({
+            "embed": audio_embed_bucket.detach().cpu(),
+            "num_repeat": int(num_repeat),
+        }, tmp_path)
+        os.replace(tmp_path, cache_path)
+        logging.info(f"Audio embedding cached: {cache_path}")
         return audio_embed_bucket, num_repeat
 
     def read_last_n_frames(self,
@@ -368,7 +497,7 @@ class WanS2V:
             cond = torch.cat([cond[:, :, 0:1].repeat(1, 1, 1, 1, 1), cond],
                              dim=2)
             cond_lat = torch.stack(
-                self.vae.encode(
+                self._vae_encode(
                     cond.to(dtype=self.param_dtype,
                             device=self.device)))[:, :,
                                                   1:].cpu()  # for mem save
@@ -495,8 +624,8 @@ class WanS2V:
         ref_pixel_values = ref_pixel_values.unsqueeze(1).unsqueeze(
             0) * 2 - 1.0  # b c 1 h w
         ref_pixel_values = ref_pixel_values.to(
-            dtype=self.vae.dtype, device=self.vae.device)
-        ref_latents = torch.stack(self.vae.encode(ref_pixel_values))
+            dtype=self._vae_dtype, device=self._vae_device)
+        ref_latents = torch.stack(self._vae_encode(ref_pixel_values))
 
         # encode the motion latents
         videos_last_frames = motion_latents.detach()
@@ -504,7 +633,7 @@ class WanS2V:
         if init_first_frame:
             drop_first_motion = False
             motion_latents[:, :, -6:] = ref_pixel_values
-        motion_latents = torch.stack(self.vae.encode(motion_latents))
+        motion_latents = torch.stack(self._vae_encode(motion_latents))
 
         # get pose cond input if need
         COND = self.load_pose_cond(
@@ -518,18 +647,9 @@ class WanS2V:
         if n_prompt == "":
             n_prompt = self.sample_neg_prompt
 
-        # preprocess
-        if not self.t5_cpu:
-            self.text_encoder.model.to(self.device)
-            context = self.text_encoder([input_prompt], self.device)
-            context_null = self.text_encoder([n_prompt], self.device)
-            if offload_model:
-                self.text_encoder.model.cpu()
-        else:
-            context = self.text_encoder([input_prompt], torch.device('cpu'))
-            context_null = self.text_encoder([n_prompt], torch.device('cpu'))
-            context = [t.to(self.device) for t in context]
-            context_null = [t.to(self.device) for t in context_null]
+        # preprocess (T5 embeddings are memoized on disk; model loads lazily)
+        context = self._encode_prompt(input_prompt, offload_model=offload_model)
+        context_null = self._encode_prompt(n_prompt, offload_model=offload_model)
 
         out = []
         # evaluation mode
@@ -650,7 +770,7 @@ class WanS2V:
                     decode_latents = torch.cat([motion_latents, latents], dim=2)
                 else:
                     decode_latents = torch.cat([ref_latents, latents], dim=2)
-                image = torch.stack(self.vae.decode(decode_latents))
+                image = torch.stack(self._vae_decode(decode_latents))
                 image = image[:, :, -(infer_frames):]
                 if (drop_first_motion and r == 0):
                     image = image[:, :, 3:]
@@ -664,7 +784,7 @@ class WanS2V:
                 videos_last_frames = videos_last_frames.to(
                     dtype=motion_latents.dtype, device=motion_latents.device)
                 motion_latents = torch.stack(
-                    self.vae.encode(videos_last_frames))
+                    self._vae_encode(videos_last_frames))
                 out.append(image.cpu())
 
         videos = torch.cat(out, dim=2)
