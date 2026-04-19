@@ -599,51 +599,35 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
         return x, seq_lens, rope_embs, mask_input
 
     def after_transformer_block(self, block_idx, hidden_states):
-        if block_idx in self.audio_injector.injected_block_id.keys():
-            audio_attn_id = self.audio_injector.injected_block_id[block_idx]
-            audio_emb = self.merged_audio_emb  # b f n c
-            num_frames = audio_emb.shape[1]
+        audio_attn_id = self.audio_injector.injected_block_id[block_idx]
+        audio_emb = self.merged_audio_emb  # b f n c
+        num_frames = audio_emb.shape[1]
 
-            if self.use_context_parallel:
-                hidden_states = gather_forward(hidden_states, dim=1)
+        input_hidden_states = hidden_states[:, :self.
+                                            original_seq_len].clone(
+                                            )  # b (f h w) c
+        input_hidden_states = rearrange(input_hidden_states, "b (t n) c -> (b t) n c", t=num_frames)
 
-            input_hidden_states = hidden_states[:, :self.
-                                                original_seq_len].clone(
-                                                )  # b (f h w) c
-            input_hidden_states = rearrange(
-                input_hidden_states, "b (t n) c -> (b t) n c", t=num_frames)
+        audio_emb_global = self.audio_emb_global
+        audio_emb_global = rearrange(audio_emb_global, "b t n c -> (b t) n c")
 
-            if self.enbale_adain and self.adain_mode == "attn_norm":
-                audio_emb_global = self.audio_emb_global
-                audio_emb_global = rearrange(audio_emb_global,
-                                             "b t n c -> (b t) n c")
-                adain_hidden_states = self.audio_injector.injector_adain_layers[
-                    audio_attn_id](
-                        input_hidden_states, temb=audio_emb_global[:, 0])
-                attn_hidden_states = adain_hidden_states
-            else:
-                attn_hidden_states = self.audio_injector.injector_pre_norm_feat[
-                    audio_attn_id](
-                        input_hidden_states)
-            audio_emb = rearrange(
-                audio_emb, "b t n c -> (b t) n c", t=num_frames)
-            attn_audio_emb = audio_emb
-            residual_out = self.audio_injector.injector[audio_attn_id](
-                x=attn_hidden_states,
-                context=attn_audio_emb,
-                context_lens=torch.ones(
-                    attn_hidden_states.shape[0],
-                    dtype=torch.long,
-                    device=attn_hidden_states.device) * attn_audio_emb.shape[1])
-            residual_out = rearrange(
-                residual_out, "(b t) n c -> b (t n) c", t=num_frames)
-            hidden_states[:, :self.
-                          original_seq_len] = hidden_states[:, :self.
-                                                            original_seq_len] + residual_out
+        attn_hidden_states = self.audio_injector.injector_adain_layers[audio_attn_id](
+                input_hidden_states, temb=audio_emb_global[:, 0])
+        audio_emb = rearrange(audio_emb, "b t n c -> (b t) n c", t=num_frames)
+        attn_audio_emb = audio_emb
 
-            if self.use_context_parallel:
-                hidden_states = torch.chunk(
-                    hidden_states, get_world_size(), dim=1)[get_rank()]
+        residual_out = self.audio_injector.injector[audio_attn_id](
+            x=attn_hidden_states,
+            context=attn_audio_emb,
+            context_lens=torch.ones(
+                attn_hidden_states.shape[0],
+                dtype=torch.long,
+                device=attn_hidden_states.device) * attn_audio_emb.shape[1])
+
+        residual_out = rearrange(residual_out, "(b t) n c -> b (t n) c", t=num_frames)
+        hidden_states[:, :self.original_seq_len] = (
+        	hidden_states[:, :self.original_seq_len] + residual_out
+         )
 
         return hidden_states
 
@@ -842,9 +826,13 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
             freqs=self.pre_compute_freqs,
             context=context,
             context_lens=context_lens)
+        assert self.use_context_parallel is False
+        assert self.enbale_adain is True
+        assert self.adain_mode == "attn_norm"
         for idx, block in enumerate(self.blocks):
             x = block(x, **kwargs)
-            x = self.after_transformer_block(idx, x)
+            if idx in self.audio_injector.injected_block_id.keys():
+                x = self.after_transformer_block(idx, x)
 
         # Context Parallel
         if self.use_context_parallel:

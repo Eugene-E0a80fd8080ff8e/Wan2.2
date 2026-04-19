@@ -20,3 +20,38 @@ make sure that by the time VAE decoder is needed , it is loaded. so, lazy-load f
 ---
 [2026-04-18 17:08:03]
 Can we do the same for audio input ?
+
+---
+[2026-04-19 15:50:29]
+<ide_selection>The user selected the lines 252 to 252 from /home/eugene/prj26/videogen1/Wan2.2/wan/modules/s2v/model_s2v.py:
+WanS2VAttentionBlock
+
+This may or may not be related to the current task.</ide_selection>
+I want to sinplify after_transformer_block .
+
+I want toremove some branches of code, assuming some values of config.  to ensure that config is exactly what I assumed, each change should produce assert in a proper place.
+
+let start from:
+self.use_context_parallel is False
+self.enbale_adain = True
+self.adain_mode = "attn_norm"
+
+---
+[2026-04-19 16:30:17]
+<ide_selection>The user selected the lines 601 to 601 from /home/eugene/prj26/videogen1/Wan2.2/wan/modules/s2v/model_s2v.py:
+after_transformer_block
+
+This may or may not be related to the current task.</ide_selection>
+please move this check ( if block_idx in self.audio_injector.injected_block_id.keys(): ) to be out of after_transformer_block
+to inside of this cycle:
+        for idx, block in enumerate(self.blocks):
+
+
+also move asserts in there
+
+---
+[2026-04-19 16:32:48]
+I want to estimate how pure after_transformer_block function is.
+
+please list all the inputs that it takes
+do not do any changes
