@@ -55,3 +55,19 @@ I want to estimate how pure after_transformer_block function is.
 
 please list all the inputs that it takes
 do not do any changes
+
+---
+[2026-04-19 16:49:53]
+please make it pure by providing it with explicit arguments:
+an instance from from self.audio_injector.injector_adain_layers (should be picked from the array at that cycle above)
+an instance from from self.audio_injector.injector ( also should be picked from the array at that cycle above)
+self.merged_audio_emb
+self.audio_emb_global
+
+- please review my proposition. this supposed to dissolve some complexity away from
+- please confirm that self.original_seq_len is unchanged during the inference, so technically pure
+- do we ever access hidden_states with other than  [:, :self.original_seq_len] ? can we just pass it in and out ?
+
+---
+[2026-04-19 16:53:14]
+please apply these changes

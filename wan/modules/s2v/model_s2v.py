@@ -598,25 +598,20 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
             ]
         return x, seq_lens, rope_embs, mask_input
 
-    def after_transformer_block(self, block_idx, hidden_states):
-        audio_attn_id = self.audio_injector.injected_block_id[block_idx]
-        audio_emb = self.merged_audio_emb  # b f n c
-        num_frames = audio_emb.shape[1]
+    def after_transformer_block(self, hidden_states_head, adain_layer, injector,
+                                merged_audio_emb, audio_emb_global):
+        # hidden_states_head: b (f h w) c   — the [:, :original_seq_len] slice
+        # merged_audio_emb:   b f n c
+        # audio_emb_global:   b t n c
+        num_frames = merged_audio_emb.shape[1]
 
-        input_hidden_states = hidden_states[:, :self.
-                                            original_seq_len].clone(
-                                            )  # b (f h w) c
-        input_hidden_states = rearrange(input_hidden_states, "b (t n) c -> (b t) n c", t=num_frames)
-
-        audio_emb_global = self.audio_emb_global
+        input_hidden_states = rearrange(hidden_states_head, "b (t n) c -> (b t) n c", t=num_frames)
         audio_emb_global = rearrange(audio_emb_global, "b t n c -> (b t) n c")
 
-        attn_hidden_states = self.audio_injector.injector_adain_layers[audio_attn_id](
-                input_hidden_states, temb=audio_emb_global[:, 0])
-        audio_emb = rearrange(audio_emb, "b t n c -> (b t) n c", t=num_frames)
-        attn_audio_emb = audio_emb
+        attn_hidden_states = adain_layer(input_hidden_states, temb=audio_emb_global[:, 0])
+        attn_audio_emb = rearrange(merged_audio_emb, "b t n c -> (b t) n c", t=num_frames)
 
-        residual_out = self.audio_injector.injector[audio_attn_id](
+        residual_out = injector(
             x=attn_hidden_states,
             context=attn_audio_emb,
             context_lens=torch.ones(
@@ -625,11 +620,7 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
                 device=attn_hidden_states.device) * attn_audio_emb.shape[1])
 
         residual_out = rearrange(residual_out, "(b t) n c -> b (t n) c", t=num_frames)
-        hidden_states[:, :self.original_seq_len] = (
-        	hidden_states[:, :self.original_seq_len] + residual_out
-         )
-
-        return hidden_states
+        return hidden_states_head + residual_out
 
     def forward(
             self,
@@ -832,7 +823,14 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
         for idx, block in enumerate(self.blocks):
             x = block(x, **kwargs)
             if idx in self.audio_injector.injected_block_id.keys():
-                x = self.after_transformer_block(idx, x)
+                aid = self.audio_injector.injected_block_id[idx]
+                x[:, :self.original_seq_len] = self.after_transformer_block(
+                    x[:, :self.original_seq_len].clone(),
+                    self.audio_injector.injector_adain_layers[aid],
+                    self.audio_injector.injector[aid],
+                    self.merged_audio_emb,
+                    self.audio_emb_global,
+                )
 
         # Context Parallel
         if self.use_context_parallel:
