@@ -264,25 +264,20 @@ def after_transformer_block(hidden_states_head, adain_layer, injector,
     return hidden_states_head + residual_out
 
 
-def _remap_pre_stem_state_dict(state_dict, prefix, local_metadata, strict,
-                               missing_keys, unexpected_keys, error_msgs):
-    # Old checkpoints stored blocks/audio_injector at the top level.
-    # Rewrite those keys so they land under `stem.` where they now live.
-    for old_sub in ("blocks.", "audio_injector."):
-        old = prefix + old_sub
-        new = prefix + "stem." + old_sub
-        for k in list(state_dict.keys()):
-            if k.startswith(old):
-                state_dict[new + k[len(old):]] = state_dict.pop(k)
-
-
 class S2VBlockStem(nn.Module):
-    """The stack of transformer blocks + audio injection — the export target for TRT."""
+    """The stack of transformer blocks + audio injection — the export target for TRT.
+
+    Holds `blocks` and `audio_injector` as non-module references so the params
+    stay registered only on the outer WanModel_S2V (keeping the existing
+    checkpoint key layout intact). ONNX tracing still works because it follows
+    tensor ops, not module registration.
+    """
 
     def __init__(self, blocks, audio_injector):
         super().__init__()
-        self.blocks = blocks
-        self.audio_injector = audio_injector
+        # bypass nn.Module.__setattr__ so these don't register as submodules
+        object.__setattr__(self, "blocks", blocks)
+        object.__setattr__(self, "audio_injector", audio_injector)
 
     def forward(self, x, e, seq_lens, grid_sizes, freqs, context, context_lens,
                 original_seq_len, merged_audio_emb, audio_emb_global):
@@ -380,8 +375,8 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
             nn.Linear(freq_dim, dim), nn.SiLU(), nn.Linear(dim, dim))
         self.time_projection = nn.Sequential(nn.SiLU(), nn.Linear(dim, dim * 6))
 
-        # blocks (owned by self.stem, built below)
-        blocks = nn.ModuleList([
+        # blocks
+        self.blocks = nn.ModuleList([
             WanS2VAttentionBlock(dim, ffn_dim, num_heads, window_size, qk_norm,
                                  cross_attn_norm, eps)
             for _ in range(num_layers)
@@ -418,8 +413,8 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
             num_token=num_audio_token,
             need_global=enable_adain)
         all_modules, all_modules_names = torch_dfs(
-            blocks, parent_name="root.transformer_blocks")
-        audio_injector = AudioInjector_WAN(
+            self.blocks, parent_name="root.transformer_blocks")
+        self.audio_injector = AudioInjector_WAN(
             all_modules,
             all_modules_names,
             dim=self.dim,
@@ -430,9 +425,8 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
             adain_dim=self.dim,
             need_adain_ont=adain_mode != "attn_norm",
         )
-        self.stem = S2VBlockStem(blocks, audio_injector)
+        self.stem = S2VBlockStem(self.blocks, self.audio_injector)
         self.adain_mode = adain_mode
-        self._register_load_state_dict_pre_hook(_remap_pre_stem_state_dict)
 
         self.trainable_cond_mask = nn.Embedding(3, self.dim)
 

@@ -185,3 +185,46 @@ please check if your calculations are correct
 good.
 now this :
 1. Extract the stem as an nn.Module subclass — S2VBlockStem — owning self.blocks + self.audio_injector. In the same file, same checkpoint. Wire WanModel_S2V.forward to call it.
+
+---
+[2026-04-20 18:27:50]
+<ide_selection>The user selected the lines 279 to 279 from /home/eugene/prj26/videogen1/Wan2.2/wan/modules/s2v/model_s2v.py:
+S2VBlockStem
+
+This may or may not be related to the current task.</ide_selection>
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+Traceback (most recent call last):
+  File "/workspace/q/Wan2.2/generate.py", line 575, in <module>
+    generate(args)
+  File "/workspace/q/Wan2.2/generate.py", line 484, in generate
+    wan_s2v = wan.WanS2V(
+              ^^^^^^^^^^^
+  File "/workspace/q/Wan2.2/wan/speech2video.py", line 127, in __init__
+    self.noise_model = WanModel_S2V.from_pretrained(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/diffusers/models/modeling_utils.py", line 1344, in from_pretrained
+    dispatch_model(model, **device_map_kwargs)
+  File "/usr/local/lib/python3.12/dist-packages/accelerate/big_modeling.py", line 512, in dispatch_model
+    model.to(device)
+  File "/usr/local/lib/python3.12/dist-packages/diffusers/models/modeling_utils.py", line 1451, in to
+    return super().to(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1369, in to
+    return self._apply(convert)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 928, in _apply
+    module._apply(fn)
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 928, in _apply
+    module._apply(fn)
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 928, in _apply
+    module._apply(fn)
+  [Previous line repeated 2 more times]
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 955, in _apply
+    param_applied = fn(param)
+                    ^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1362, in convert
+    raise NotImplementedError(
+NotImplementedError: Cannot copy out of meta tensor; no data! Please use torch.nn.Module.to_empty() instead of torch.nn.Module.to() when moving module from meta to a different device.
