@@ -71,3 +71,73 @@ self.audio_emb_global
 ---
 [2026-04-19 16:53:14]
 please apply these changes
+
+---
+[2026-04-20 14:27:15]
+<ide_selection>The user selected the lines 823 to 834 from /home/eugene/prj26/videogen1/Wan2.2/wan/modules/s2v/model_s2v.py:
+        for idx, block in enumerate(self.blocks):
+            x = block(x, **kwargs)
+            if idx in self.audio_injector.injected_block_id.keys():
+                aid = self.audio_injector.injected_block_id[idx]
+                x[:, :self.original_seq_len] = self.after_transformer_block(
+                    x[:, :self.original_seq_len].clone(),
+                    self.audio_injector.injector_adain_layers[aid],
+                    self.audio_injector.injector[aid],
+                    self.merged_audio_emb,
+                    self.audio_emb_global,
+                )
+
+
+This may or may not be related to the current task.</ide_selection>
+okay, great.
+
+now this block of code:
+
+        for idx, block in enumerate(self.blocks):
+            x = block(x, **kwargs)
+            if idx in self.audio_injector.injected_block_id.keys():
+                aid = self.audio_injector.injected_block_id[idx]
+                x[:, :self.original_seq_len] = self.after_transformer_block(
+                    x[:, :self.original_seq_len].clone(),
+                    self.audio_injector.injector_adain_layers[aid],
+                    self.audio_injector.injector[aid],
+                    self.merged_audio_emb,
+                    self.audio_emb_global,
+                )
+
+
+It receives some input and x , processes it and outputs x. 
+
+I want to save it to a separate neural network. Then I want to convert it to TensorRT. maybe even quantize it. 
+
+But first, I just want to separate the one big network which I have now onto three (or four) parts:
+
+1. audio processor
+2. the part that preceeds the mentioned block
+3. this block
+4. the following block
+
+I want to load them as a separate files. 
+I believe I need a tool which will separate the current network onto four pieces. 
+Also, this source code needs to be modified so when the network is loaded, all the respective weights is placed under its places. 
+
+Is this even a good idea?
+
+---
+[2026-04-20 14:35:14]
+<ide_selection>The user selected the lines 173 to 173 from /home/eugene/prj26/videogen1/Wan2.2/wan/modules/s2v/model_s2v.py:
+rope_apply
+
+This may or may not be related to the current task.</ide_selection>
+I only want to convert to trt the third block. the rest will stay as is and use the new trt block in place of current stack of blocks and audio injection things.
+
+do I use rope_apply somewhere inside third block ?
+
+---
+[2026-04-20 14:37:27]
+can you change float64 to float32? 
+ is there a lot of work to convert view_as_complex to be pairs of float32 ?
+
+---
+[2026-04-20 15:19:59]
+go on

@@ -60,20 +60,15 @@ def torch_dfs(model: nn.Module, parent_name='root'):
 
 @amp.autocast(enabled=False)
 def rope_apply(x, grid_sizes, freqs, start=None):
-    n, c = x.size(2), x.size(3) // 2
-    # loop over samples
-    output = []
-    for i, _ in enumerate(x):
-        s = x.size(1)
-        x_i = torch.view_as_complex(x[i, :s].to(torch.float64).reshape(
-            s, n, -1, 2))
-        freqs_i = freqs[i, :s]
-        # apply rotary embedding
-        x_i = torch.view_as_real(x_i * freqs_i).flatten(2)
-        x_i = torch.cat([x_i, x[i, s:]])
-        # append to collection
-        output.append(x_i)
-    return torch.stack(output).float()
+    # x:     [b, s, n, d]            real
+    # freqs: [b, s, n, d/2, 2]       real, (cos, sin) pairs
+    b, s, n, d = x.shape
+    x = x.float().view(b, s, n, d // 2, 2)
+    x_re, x_im = x.unbind(-1)
+    f_re, f_im = freqs.unbind(-1)
+    out_re = x_re * f_re - x_im * f_im
+    out_im = x_re * f_im + x_im * f_re
+    return torch.stack([out_re, out_im], dim=-1).flatten(-2)
 
 
 @amp.autocast(enabled=False)
@@ -743,6 +738,7 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
 
         x = torch.cat(x, dim=0)
         self.pre_compute_freqs = torch.cat(self.pre_compute_freqs, dim=0)
+        self.pre_compute_freqs = torch.view_as_real(self.pre_compute_freqs).to(torch.float32)
         mask_input = torch.cat(mask_input, dim=0)
 
         x = x + self.trainable_cond_mask(mask_input).to(x.dtype)
