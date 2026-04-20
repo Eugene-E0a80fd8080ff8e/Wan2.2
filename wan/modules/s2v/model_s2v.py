@@ -294,8 +294,8 @@ class S2VBlockStem(nn.Module):
                 aid = self.audio_injector.injected_block_id[idx]
                 x[:, :original_seq_len] = after_transformer_block(
                     x[:, :original_seq_len].clone(),
-                    self.stem.audio_injector.injector_adain_layers[aid],
-                    self.stem.audio_injector.injector[aid],
+                    self.audio_injector.injector_adain_layers[aid],
+                    self.audio_injector.injector[aid],
                     merged_audio_emb,
                     audio_emb_global,
                 )
@@ -425,7 +425,11 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
             adain_dim=self.dim,
             need_adain_ont=adain_mode != "attn_norm",
         )
-        self.stem = S2VBlockStem(self.blocks, self.audio_injector)
+        # bypass nn.Module.__setattr__: keep stem as a plain attribute so it
+        # is not registered as a submodule (which would confuse accelerate /
+        # diffusers meta-device loading). stem holds only non-module refs.
+        object.__setattr__(self, "stem",
+                           S2VBlockStem(self.blocks, self.audio_injector))
         self.adain_mode = adain_mode
 
         self.trainable_cond_mask = nn.Embedding(3, self.dim)
