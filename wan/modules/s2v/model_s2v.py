@@ -816,6 +816,7 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
         assert self.use_context_parallel is False
         assert self.enbale_adain is True
         assert self.adain_mode == "attn_norm"
+        print(f"[stem] x.shape={tuple(x.shape)}  original_seq_len={int(self.original_seq_len)}  seg_idx={e0[1]}")
         for idx, block in enumerate(self.blocks):
             x = block(x, **kwargs)
             if idx in self.audio_injector.injected_block_id.keys():

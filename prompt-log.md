@@ -141,3 +141,29 @@ can you change float64 to float32?
 ---
 [2026-04-20 15:19:59]
 go on
+
+---
+[2026-04-20 17:33:03]
+<ide_selection>The user selected the lines 168 to 168 from /home/eugene/prj26/videogen1/Wan2.2/wan/modules/s2v/model_s2v.py:
+rope_apply
+
+This may or may not be related to the current task.</ide_selection>
+so, any obstacles left for TensorRT ?
+
+again. I do not want to Convert to trt anythong other than that stem of transformers from the middle.
+
+I belieev the first step should be to savef it to separate files.  then I will convert the stem to ONNX, which will open a path to trt
+
+---
+[2026-04-20 18:03:09]
+<ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/wan/modules/s2v/model_s2v.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
+1. what is that seg_idx ??  is it somehow related to multi-gpu training/inference? I do not have that
+2. yes. remove that
+3,4 . what is that e anyway ?
+5. please make an estimation on seq_len. also make a print(f"{seq_len}") in a proper place.  does seq_len stays constant during entire run ?
+6. hmm config.py says that s2v_14B.transformer.num_layers = 40  . not 32. please double check. am I misunderstand something ?
+
+---
+[2026-04-20 18:13:40]
+> For a 480×832 @ ~20 latent frames video (common Wan config): 20 × 240 × 416 / 4 ≈ 500k
+Have you account for VAE ?
