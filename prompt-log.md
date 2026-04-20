@@ -167,3 +167,21 @@ I belieev the first step should be to savef it to separate files.  then I will c
 [2026-04-20 18:13:40]
 > For a 480×832 @ ~20 latent frames video (common Wan config): 20 × 240 × 416 / 4 ≈ 500k
 Have you account for VAE ?
+
+---
+[2026-04-20 18:16:30]
+<ide_selection>The user selected the lines 819 to 820 from /home/eugene/prj26/videogen1/Wan2.2/wan/modules/s2v/model_s2v.py:
+print(f"[stem] x.shape={tuple(x.shape)}  original_seq_len={int(self.original_seq_len)}  seg_idx={e0[1]}")
+        
+
+This may or may not be related to the current task.</ide_selection>
+okay.  for a 480x480 :
+[stem] x.shape=(1, 16464, 5120)  original_seq_len=15680  seg_idx=15680
+
+please check if your calculations are correct
+
+---
+[2026-04-20 18:20:23]
+good.
+now this :
+1. Extract the stem as an nn.Module subclass — S2VBlockStem — owning self.blocks + self.audio_injector. In the same file, same checkpoint. Wire WanModel_S2V.forward to call it.

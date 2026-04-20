@@ -239,6 +239,74 @@ class WanS2VAttentionBlock(WanAttentionBlock):
         return x
 
 
+def after_transformer_block(hidden_states_head, adain_layer, injector,
+                            merged_audio_emb, audio_emb_global):
+    # hidden_states_head: b (f h w) c   — the [:, :original_seq_len] slice
+    # merged_audio_emb:   b f n c
+    # audio_emb_global:   b t n c
+    num_frames = merged_audio_emb.shape[1]
+
+    input_hidden_states = rearrange(hidden_states_head, "b (t n) c -> (b t) n c", t=num_frames)
+    audio_emb_global = rearrange(audio_emb_global, "b t n c -> (b t) n c")
+
+    attn_hidden_states = adain_layer(input_hidden_states, temb=audio_emb_global[:, 0])
+    attn_audio_emb = rearrange(merged_audio_emb, "b t n c -> (b t) n c", t=num_frames)
+
+    residual_out = injector(
+        x=attn_hidden_states,
+        context=attn_audio_emb,
+        context_lens=torch.ones(
+            attn_hidden_states.shape[0],
+            dtype=torch.long,
+            device=attn_hidden_states.device) * attn_audio_emb.shape[1])
+
+    residual_out = rearrange(residual_out, "(b t) n c -> b (t n) c", t=num_frames)
+    return hidden_states_head + residual_out
+
+
+def _remap_pre_stem_state_dict(state_dict, prefix, local_metadata, strict,
+                               missing_keys, unexpected_keys, error_msgs):
+    # Old checkpoints stored blocks/audio_injector at the top level.
+    # Rewrite those keys so they land under `stem.` where they now live.
+    for old_sub in ("blocks.", "audio_injector."):
+        old = prefix + old_sub
+        new = prefix + "stem." + old_sub
+        for k in list(state_dict.keys()):
+            if k.startswith(old):
+                state_dict[new + k[len(old):]] = state_dict.pop(k)
+
+
+class S2VBlockStem(nn.Module):
+    """The stack of transformer blocks + audio injection — the export target for TRT."""
+
+    def __init__(self, blocks, audio_injector):
+        super().__init__()
+        self.blocks = blocks
+        self.audio_injector = audio_injector
+
+    def forward(self, x, e, seq_lens, grid_sizes, freqs, context, context_lens,
+                original_seq_len, merged_audio_emb, audio_emb_global):
+        kwargs = dict(
+            e=e,
+            seq_lens=seq_lens,
+            grid_sizes=grid_sizes,
+            freqs=freqs,
+            context=context,
+            context_lens=context_lens)
+        for idx, block in enumerate(self.blocks):
+            x = block(x, **kwargs)
+            if idx in self.audio_injector.injected_block_id.keys():
+                aid = self.audio_injector.injected_block_id[idx]
+                x[:, :original_seq_len] = after_transformer_block(
+                    x[:, :original_seq_len].clone(),
+                    self.stem.audio_injector.injector_adain_layers[aid],
+                    self.stem.audio_injector.injector[aid],
+                    merged_audio_emb,
+                    audio_emb_global,
+                )
+        return x
+
+
 class WanModel_S2V(ModelMixin, ConfigMixin):
     ignore_for_config = [
         'args', 'kwargs', 'patch_size', 'cross_attn_norm', 'qk_norm',
@@ -312,8 +380,8 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
             nn.Linear(freq_dim, dim), nn.SiLU(), nn.Linear(dim, dim))
         self.time_projection = nn.Sequential(nn.SiLU(), nn.Linear(dim, dim * 6))
 
-        # blocks
-        self.blocks = nn.ModuleList([
+        # blocks (owned by self.stem, built below)
+        blocks = nn.ModuleList([
             WanS2VAttentionBlock(dim, ffn_dim, num_heads, window_size, qk_norm,
                                  cross_attn_norm, eps)
             for _ in range(num_layers)
@@ -350,8 +418,8 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
             num_token=num_audio_token,
             need_global=enable_adain)
         all_modules, all_modules_names = torch_dfs(
-            self.blocks, parent_name="root.transformer_blocks")
-        self.audio_injector = AudioInjector_WAN(
+            blocks, parent_name="root.transformer_blocks")
+        audio_injector = AudioInjector_WAN(
             all_modules,
             all_modules_names,
             dim=self.dim,
@@ -362,7 +430,9 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
             adain_dim=self.dim,
             need_adain_ont=adain_mode != "attn_norm",
         )
+        self.stem = S2VBlockStem(blocks, audio_injector)
         self.adain_mode = adain_mode
+        self._register_load_state_dict_pre_hook(_remap_pre_stem_state_dict)
 
         self.trainable_cond_mask = nn.Embedding(3, self.dim)
 
@@ -439,13 +509,13 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
             if hasattr(self, "cond_encoder"):
                 self.cond_encoder = zero_module(self.cond_encoder)
 
-            for i in range(self.audio_injector.injector.__len__()):
-                self.audio_injector.injector[i].o = zero_module(
-                    self.audio_injector.injector[i].o)
+            for i in range(self.stem.audio_injector.injector.__len__()):
+                self.stem.audio_injector.injector[i].o = zero_module(
+                    self.stem.audio_injector.injector[i].o)
                 if self.enbale_adain:
-                    self.audio_injector.injector_adain_layers[
+                    self.stem.audio_injector.injector_adain_layers[
                         i].linear = zero_module(
-                            self.audio_injector.injector_adain_layers[i].linear)
+                            self.stem.audio_injector.injector_adain_layers[i].linear)
 
     def process_motion(self, motion_latents, drop_motion_frames=False):
         if drop_motion_frames or motion_latents[0].shape[1] == 0:
@@ -592,30 +662,6 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
                           dim=1) for m, u in zip(mask_input, x)
             ]
         return x, seq_lens, rope_embs, mask_input
-
-    def after_transformer_block(self, hidden_states_head, adain_layer, injector,
-                                merged_audio_emb, audio_emb_global):
-        # hidden_states_head: b (f h w) c   — the [:, :original_seq_len] slice
-        # merged_audio_emb:   b f n c
-        # audio_emb_global:   b t n c
-        num_frames = merged_audio_emb.shape[1]
-
-        input_hidden_states = rearrange(hidden_states_head, "b (t n) c -> (b t) n c", t=num_frames)
-        audio_emb_global = rearrange(audio_emb_global, "b t n c -> (b t) n c")
-
-        attn_hidden_states = adain_layer(input_hidden_states, temb=audio_emb_global[:, 0])
-        attn_audio_emb = rearrange(merged_audio_emb, "b t n c -> (b t) n c", t=num_frames)
-
-        residual_out = injector(
-            x=attn_hidden_states,
-            context=attn_audio_emb,
-            context_lens=torch.ones(
-                attn_hidden_states.shape[0],
-                dtype=torch.long,
-                device=attn_hidden_states.device) * attn_audio_emb.shape[1])
-
-        residual_out = rearrange(residual_out, "(b t) n c -> b (t n) c", t=num_frames)
-        return hidden_states_head + residual_out
 
     def forward(
             self,
@@ -806,28 +852,22 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
             self.pre_compute_freqs = self.pre_compute_freqs[sp_rank]
 
         # arguments
-        kwargs = dict(
+        assert self.use_context_parallel is False
+        assert self.enbale_adain is True
+        assert self.adain_mode == "attn_norm"
+        print(f"[stem] x.shape={tuple(x.shape)}  original_seq_len={int(self.original_seq_len)}  seg_idx={e0[1]}")
+        x = self.stem(
+            x,
             e=e0,
             seq_lens=seq_lens,
             grid_sizes=grid_sizes,
             freqs=self.pre_compute_freqs,
             context=context,
-            context_lens=context_lens)
-        assert self.use_context_parallel is False
-        assert self.enbale_adain is True
-        assert self.adain_mode == "attn_norm"
-        print(f"[stem] x.shape={tuple(x.shape)}  original_seq_len={int(self.original_seq_len)}  seg_idx={e0[1]}")
-        for idx, block in enumerate(self.blocks):
-            x = block(x, **kwargs)
-            if idx in self.audio_injector.injected_block_id.keys():
-                aid = self.audio_injector.injected_block_id[idx]
-                x[:, :self.original_seq_len] = self.after_transformer_block(
-                    x[:, :self.original_seq_len].clone(),
-                    self.audio_injector.injector_adain_layers[aid],
-                    self.audio_injector.injector[aid],
-                    self.merged_audio_emb,
-                    self.audio_emb_global,
-                )
+            context_lens=context_lens,
+            original_seq_len=self.original_seq_len,
+            merged_audio_emb=self.merged_audio_emb,
+            audio_emb_global=self.audio_emb_global,
+        )
 
         # Context Parallel
         if self.use_context_parallel:
