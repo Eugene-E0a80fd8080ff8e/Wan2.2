@@ -224,8 +224,7 @@ class WanS2VAttentionBlock(WanAttentionBlock):
         seg_idx = [0, seg_idx, x.size(1)]
         e = e[0]
         modulation = self.modulation.unsqueeze(2)
-        with amp.autocast(dtype=torch.float32):
-            e = (modulation + e).chunk(6, dim=1)
+        e = (modulation.float() + e).chunk(6, dim=1)
         assert e[0].dtype == torch.float32
 
         e = [element.squeeze(1) for element in e]
@@ -237,12 +236,12 @@ class WanS2VAttentionBlock(WanAttentionBlock):
         norm_x = torch.cat(parts, dim=1)
         # self-attention
         y = self.self_attn(norm_x, seq_lens, grid_sizes, freqs)
-        with amp.autocast(dtype=torch.float32):
-            z = []
-            for i in range(2):
-                z.append(y[:, seg_idx[i]:seg_idx[i + 1]] * e[2][:, i:i + 1])
-            y = torch.cat(z, dim=1)
-            x = x + y
+        y = y.float()
+        z = []
+        for i in range(2):
+            z.append(y[:, seg_idx[i]:seg_idx[i + 1]] * e[2][:, i:i + 1])
+        y = torch.cat(z, dim=1)
+        x = x.float() + y
         # cross-attention & ffn function
         def cross_attn_ffn(x, context, context_lens, e):
             x = x + self.cross_attn(self.norm3(x), context, context_lens)
@@ -253,12 +252,12 @@ class WanS2VAttentionBlock(WanAttentionBlock):
                              (1 + e[4][:, i:i + 1]) + e[3][:, i:i + 1])
             norm2_x = torch.cat(parts, dim=1)
             y = self.ffn(norm2_x)
-            with amp.autocast(dtype=torch.float32):
-                z = []
-                for i in range(2):
-                    z.append(y[:, seg_idx[i]:seg_idx[i + 1]] * e[5][:, i:i + 1])
-                y = torch.cat(z, dim=1)
-                x = x + y
+            y = y.float()
+            z = []
+            for i in range(2):
+                z.append(y[:, seg_idx[i]:seg_idx[i + 1]] * e[5][:, i:i + 1])
+            y = torch.cat(z, dim=1)
+            x = x.float() + y
             return x
 
         x = cross_attn_ffn(x, context, context_lens, e)

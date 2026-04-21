@@ -294,3 +294,16 @@ good. go on. do 1+3
 [2026-04-21 23:41:06]
 <ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/wan/modules/s2v/model_s2v.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
 okay. now deal with flash attention.
+
+---
+[2026-04-21 23:47:03]
+<ide_selection>The user selected the lines 98 to 98 from /home/eugene/prj26/videogen1/Wan2.2/wan/modules/s2v/model_s2v.py:
+bfloat
+
+This may or may not be related to the current task.</ide_selection>
+this is interesting. what is amp.autocast  ?  
+what does it casts ? isn't everything is in bfloat16 by now ?
+
+---
+[2026-04-21 23:48:42]
+okay. go on
