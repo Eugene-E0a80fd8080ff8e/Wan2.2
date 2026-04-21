@@ -279,10 +279,10 @@ class S2VBlockStem(nn.Module):
         object.__setattr__(self, "blocks", blocks)
         object.__setattr__(self, "audio_injector", audio_injector)
 
-    def forward(self, x, e, seq_lens, grid_sizes, freqs, context, context_lens,
+    def forward(self, x, e, seg_idx, seq_lens, grid_sizes, freqs, context, context_lens,
                 original_seq_len, merged_audio_emb, audio_emb_global):
         kwargs = dict(
-            e=e,
+            e=[e, seg_idx],
             seq_lens=seq_lens,
             grid_sizes=grid_sizes,
             freqs=freqs,
@@ -856,7 +856,8 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
         print(f"[stem] x.shape={tuple(x.shape)}  original_seq_len={int(self.original_seq_len)}  seg_idx={e0[1]}")
         x = self.stem(
             x,
-            e=e0,
+            e=e0[0],
+            seg_idx=torch.as_tensor(e0[1], dtype=torch.long, device=x.device),
             seq_lens=seq_lens,
             grid_sizes=grid_sizes,
             freqs=self.pre_compute_freqs,
