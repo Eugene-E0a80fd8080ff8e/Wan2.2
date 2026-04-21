@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torch.cuda.amp as amp
 import torch.nn as nn
+import torch.nn.functional as F
 from diffusers.configuration_utils import ConfigMixin, register_to_config
 from diffusers.models.modeling_utils import ModelMixin
 from einops import rearrange
@@ -23,7 +24,6 @@ from ..model import (
     WanLayerNorm,
     WanModel,
     WanSelfAttention,
-    flash_attention,
     rope_params,
     sinusoidal_embedding_1d,
 )
@@ -163,17 +163,41 @@ class WanS2VSelfAttention(WanSelfAttention):
 
         q, k, v = qkv_fn(x)
 
-        x = flash_attention(
-            q=rope_apply(q, grid_sizes, freqs),
-            k=rope_apply(k, grid_sizes, freqs),
-            v=v,
-            k_lens=seq_lens,
-            window_size=self.window_size)
+        q_rope = rope_apply(q, grid_sizes, freqs)
+        k_rope = rope_apply(k, grid_sizes, freqs)
+        pad_mask = (torch.arange(s, device=q_rope.device).unsqueeze(0)
+                    < seq_lens.to(q_rope.device).unsqueeze(1))[:, None, None, :]
+        x = F.scaled_dot_product_attention(
+            q_rope.transpose(1, 2),
+            k_rope.transpose(1, 2),
+            v.to(q_rope.dtype).transpose(1, 2),
+            attn_mask=pad_mask,
+        ).transpose(1, 2)
 
         # output
         x = x.flatten(2)
         x = self.o(x)
         return x
+
+
+def _sdpa_cross_attn_forward(self, x, context, context_lens):
+    b, n, d = x.size(0), self.num_heads, self.head_dim
+    q = self.norm_q(self.q(x)).view(b, -1, n, d)
+    k = self.norm_k(self.k(context)).view(b, -1, n, d)
+    v = self.v(context).view(b, -1, n, d)
+    if context_lens is not None:
+        lk = k.size(1)
+        mask = (torch.arange(lk, device=k.device).unsqueeze(0)
+                < context_lens.to(k.device).unsqueeze(1))[:, None, None, :]
+    else:
+        mask = None
+    x = F.scaled_dot_product_attention(
+        q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2),
+        attn_mask=mask,
+    ).transpose(1, 2)
+    x = x.flatten(2)
+    x = self.o(x)
+    return x
 
 
 class WanS2VAttentionBlock(WanAttentionBlock):
@@ -190,6 +214,8 @@ class WanS2VAttentionBlock(WanAttentionBlock):
                          cross_attn_norm, eps)
         self.self_attn = WanS2VSelfAttention(dim, num_heads, window_size,
                                              qk_norm, eps)
+        self.cross_attn.forward = types.MethodType(
+            _sdpa_cross_attn_forward, self.cross_attn)
 
     def forward(self, x, e, seq_lens, grid_sizes, freqs, context, context_lens):
         assert e[0].dtype == torch.float32

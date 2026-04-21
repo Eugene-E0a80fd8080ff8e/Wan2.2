@@ -289,3 +289,8 @@ list the blockers
 [2026-04-21 23:29:21]
 <ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/wan/modules/s2v/model_s2v.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
 good. go on. do 1+3
+
+---
+[2026-04-21 23:41:06]
+<ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/wan/modules/s2v/model_s2v.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
+okay. now deal with flash attention.
