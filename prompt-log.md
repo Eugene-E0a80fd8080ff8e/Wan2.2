@@ -307,3 +307,20 @@ what does it casts ? isn't everything is in bfloat16 by now ?
 ---
 [2026-04-21 23:48:42]
 okay. go on
+
+---
+[2026-04-22 00:07:57]
+good!
+
+are we ready to plan onnx splicing , loading and inference ?
+do not do TensorRT yet.  Lets first test if stem separation worked.
+
+are we ready to make a plan?
+
+---
+[2026-04-23 11:46:56]
+go on
+
+---
+[2026-04-23 15:14:17]
+go on

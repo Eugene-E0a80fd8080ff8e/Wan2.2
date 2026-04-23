@@ -317,13 +317,14 @@ class S2VBlockStem(nn.Module):
             x = block(x, **kwargs)
             if idx in self.audio_injector.injected_block_id.keys():
                 aid = self.audio_injector.injected_block_id[idx]
-                x[:, :original_seq_len] = after_transformer_block(
-                    x[:, :original_seq_len].clone(),
+                head = after_transformer_block(
+                    x[:, :original_seq_len],
                     self.audio_injector.injector_adain_layers[aid],
                     self.audio_injector.injector[aid],
                     merged_audio_emb,
                     audio_emb_global,
                 )
+                x = torch.cat([head, x[:, original_seq_len:]], dim=1)
         return x
 
 
@@ -450,6 +451,8 @@ class WanModel_S2V(ModelMixin, ConfigMixin):
             adain_dim=self.dim,
             need_adain_ont=adain_mode != "attn_norm",
         )
+        for _inj in self.audio_injector.injector:
+            _inj.forward = types.MethodType(_sdpa_cross_attn_forward, _inj)
         # bypass nn.Module.__setattr__: keep stem as a plain attribute so it
         # is not registered as a submodule (which would confuse accelerate /
         # diffusers meta-device loading). stem holds only non-module refs.
