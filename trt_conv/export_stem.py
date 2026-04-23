@@ -99,6 +99,10 @@ def install_export_hook(model, onnx_path=None, opset=17):
 
         print(f"[export_stem] exporting ONNX to {onnx_path} (opset={opset})")
         stem.eval()
+        # Restore the real forward before export, otherwise the tracer will
+        # re-enter `hooked` and call torch.onnx.export recursively.
+        if "forward" in stem.__dict__:
+            del stem.__dict__["forward"]
         with torch.inference_mode():
             torch.onnx.export(
                 stem,

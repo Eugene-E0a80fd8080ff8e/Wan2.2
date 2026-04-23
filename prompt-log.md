@@ -378,3 +378,70 @@ The video generates normally, but I see no new files in /workspace/s2v_trt/
 ---
 [2026-04-23 16:06:31]
 could you please add (1) and (2) into files ? and I will just copy files to the remote and run there
+
+---
+[2026-04-23 16:09:09]
+root@C.35464689:/Wan2.2$ ./_r3.sh 
+[2026-04-23 09:08:20,545] INFO: Generation job args: Namespace(task='s2v-14B', size='480*480', frame_num=81, ckpt_dir='./Wan2.2-S2V-14B/', offload_model=True, ulysses_size=1, t5_fsdp=False, t5_cpu=False, dit_fsdp=False, save_file=None, prompt='The girl smiles and talks to the camera.', use_prompt_extend=False, prompt_extend_method='local_qwen', prompt_extend_model=None, prompt_extend_target_lang='zh', base_seed=2372618062170313350, image='face1.jpg', sample_solver='unipc', sample_steps=16, sample_shift=3, sample_guide_scale=4.5, convert_model_dtype=True, src_root_path=None, refert_num=77, replace_flag=False, use_relighting_lora=False, num_clip=None, audio='input2.wav', enable_tts=False, tts_prompt_audio=None, tts_prompt_text=None, tts_text=None, pose_video=None, start_from_ref=False, infer_frames=80)
+[2026-04-23 09:08:20,545] INFO: Generation model config: {'__name__': 'Config: Wan S2V 14B', 't5_model': 'umt5_xxl', 't5_dtype': torch.bfloat16, 'text_len': 512, 'param_dtype': torch.bfloat16, 'num_train_timesteps': 1000, 'sample_fps': 16, 'sample_neg_prompt': '画面模糊，最差质量，画面模糊，细节模糊不清，情绪激动剧烈，手快速抖动，字幕，丑
+  的，残缺的，多余的手指，画得不好的手部，画得不好的脸部，畸形的，毁容的，形态畸形的肢体，手指融合，静止不动的画面，杂乱的背景，三条腿，背景人很多，倒着走', 'frame_num': 81, 't5_checkpoint': 'models_t5_umt5-xxl-enc-bf16.pth', 't5_tokenizer': 'google/umt5-xxl', 'vae_checkpoint': 'Wan2.1_VAE.pth', 'vae_stride': (4, 8, 8), 'wav2vec': 'wav2vec2-large-xlsr-53-english', 'num_heads': 40, 'transformer': {'__name__': 'Config: Transformer config for WanModel_S2V', 'patch_size': (1, 2, 2), 'dim': 5120, 'ffn_dim': 13824, 'freq_dim': 256, 'num_heads': 40, 'num_layers': 40, 'window_size': (-1, -1), 'qk_norm': True, 'cross_attn_norm': True, 'eps': 1e-06, 'enable_adain': True, 'adain_mode': 'attn_norm', 'audio_inject_layers': [0, 4, 8, 12, 16, 20, 24, 27, 30, 33, 36, 39], 'zero_init': True, 'zero_timestep': True, 'enable_motioner': False, 'add_last_motion': True, 'trainable_token': False, 'enable_tsm': False, 'enable_framepack': True, 'framepack_drop_mode': 'padd', 'audio_dim': 1024, 'motion_frames': 73, 'cond_dim': 16}, 'drop_first_motion': True, 'sample_shift': 3, 'sample_steps': 40, 'sample_guide_scale': 4.5}
+[2026-04-23 09:08:20,545] INFO: Input prompt: The girl smiles and talks to the camera.
+[2026-04-23 09:08:20,565] INFO: Input image: face1.jpg
+[2026-04-23 09:08:20,565] INFO: Creating WanS2V pipeline.
+[2026-04-23 09:08:20,565] INFO: Creating WanModel from ./Wan2.2-S2V-14B/
+Loading checkpoint shards: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████| 4/4 [00:07<00:00,  1.93s/it]
+[2026-04-23 09:08:28,663] INFO: Generating video ...
+[2026-04-23 09:08:28,694] INFO: Audio embedding cache hit: ./Wan2.2-S2V-14B/audio_embed_cache/076b5fd7dca482623ead89949b92d7794f4acd4d51097d8f664211db6637aaac.pt
+[2026-04-23 09:08:28,920] INFO: VAE encode cache hit: ./Wan2.2-S2V-14B/vae_embed_cache/enc_93c572113f5741e0091f41a9012fe691d2df09f3c0122202989c350474281d8b.pt
+[2026-04-23 09:08:29,763] INFO: VAE encode cache hit: ./Wan2.2-S2V-14B/vae_embed_cache/enc_7e8d7dde18769f2eb4521d86a9d22f28a1f89fa656638418150642b725cba33f.pt
+[2026-04-23 09:08:31,189] INFO: VAE encode cache hit: ./Wan2.2-S2V-14B/vae_embed_cache/enc_706b635b0ae2b519b8bf8d1326c9a1c1b0f18d0041e960df191f008cd5d6432a.pt
+[2026-04-23 09:08:31,244] INFO: T5 embedding cache hit: ./Wan2.2-S2V-14B/t5_embed_cache/20dde52690cca817e53f6abae8a346dd574d349ca070ebb5acbc6d2d84935fa0.pt
+[2026-04-23 09:08:31,245] INFO: T5 embedding cache hit: ./Wan2.2-S2V-14B/t5_embed_cache/514e72c797f750e49a2acf8fde9b5516cdb4b428daca8cbd5f865b5d395e6c37.pt
+  0%|                                                                                                                                              | 0/16 [00:00<?, ?it/s]
+[stem] x.shape=(1, 16464, 5120)  original_seq_len=15680  seg_idx=15680
+[diag] S2VBlockStem.forward called, self.forward id: 139911480415616, qualname: S2VBlockStem.forward
+[stem] x.shape=(1, 16464, 5120)  original_seq_len=15680  seg_idx=15680
+[diag] S2VBlockStem.forward called, self.forward id: 139911476137856, qualname: S2VBlockStem.forward
+  6%|████████▍                                                                                                                             | 1/16 [00:14<03:36, 14.44s/it]
+[stem] x.shape=(1, 16464, 5120)  original_seq_len=15680  seg_idx=15680
+[diag] S2VBlockStem.forward called, self.forward id: 139911476103296, qualname: S2VBlockStem.forward
+
+---
+[2026-04-23 16:15:55]
+ah yeah. I forgot to update _r3.sh itself.
+the hook is working now.
+
+  File "/usr/local/lib/python3.12/dist-packages/torch/jit/_trace.py", line 1501, in _get_trace_graph
+    outs = ONNXTracedModule(
+           ^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/jit/_trace.py", line 138, in forward
+    graph, _out = torch._C._create_graph_by_tracing(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/jit/_trace.py", line 129, in wrapper
+    outs.append(self.inner(*trace_inputs))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1741, in _slow_forward
+    result = self.forward(*input, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Wan2.2/trt_conv/export_stem.py", line 103, in hooked
+    torch.onnx.export(
+  File "/usr/local/lib/python3.12/dist-packages/torch/onnx/__init__.py", line 399, in export
+    export(
+  File "/usr/local/lib/python3.12/dist-packages/torch/onnx/utils.py", line 522, in export
+    _export(
+  File "/usr/local/lib/python3.12/dist-packages/torch/onnx/utils.py", line 1381, in _export
+    assert GLOBALS.in_onnx_export is False
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
