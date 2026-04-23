@@ -97,16 +97,31 @@ def install_export_hook(model, onnx_path=None, opset=17):
         torch.save(cpu_inputs, inputs_pt)
         print(f"[export_stem] saved inputs snapshot to {inputs_pt}")
 
-        print(f"[export_stem] exporting ONNX to {onnx_path} (opset={opset})")
-        stem.eval()
+        # Move the whole stem (blocks + audio injector) to CPU so the tracer
+        # has room to work. blocks/audio_injector are shared with the parent
+        # model via object.__setattr__, so stem.to("cpu") is a no-op — we have
+        # to move them explicitly.
+        print("[export_stem] moving stem submodules to CPU...")
+        stem.blocks.to("cpu")
+        stem.audio_injector.to("cpu")
+        cpu_positional = tuple(
+            v.cpu() if isinstance(v, torch.Tensor) else v for v in positional
+        )
+        del positional
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         # Restore the real forward before export, otherwise the tracer will
         # re-enter `hooked` and call torch.onnx.export recursively.
         if "forward" in stem.__dict__:
             del stem.__dict__["forward"]
+
+        print(f"[export_stem] exporting ONNX to {onnx_path} (opset={opset})")
+        stem.eval()
         with torch.inference_mode():
             torch.onnx.export(
                 stem,
-                positional,
+                cpu_positional,
                 onnx_path,
                 input_names=TENSOR_INPUT_NAMES,
                 output_names=["out"],

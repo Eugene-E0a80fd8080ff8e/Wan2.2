@@ -445,3 +445,39 @@ the hook is working now.
     assert GLOBALS.in_onnx_export is False
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 AssertionError
+
+---
+[2026-04-23 16:20:33]
+File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Wan2.2/trt_conv/export_stem.py", line 107, in hooked
+    torch.onnx.export(
+  File "/usr/local/lib/python3.12/dist-packages/torch/onnx/__init__.py", line 399, in export
+    export(
+  File "/usr/local/lib/python3.12/dist-packages/torch/onnx/utils.py", line 522, in export
+    _export(
+  File "/usr/local/lib/python3.12/dist-packages/torch/onnx/utils.py", line 1460, in _export
+    graph, params_dict, torch_out = _model_to_graph(
+                                    ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/onnx/utils.py", line 1084, in _model_to_graph
+    graph = _optimize_graph(
+            ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/onnx/utils.py", line 659, in _optimize_graph
+    graph = _C._jit_pass_onnx(graph, operator_export_type)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/onnx/utils.py", line 1729, in _run_symbolic_function
+    return symbolic_fn(graph_context, *inputs, **attrs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/onnx/symbolic_opset9.py", line 6555, in prim_constant
+    return g.op("Constant", value_t=symbolic_helper._node_get(node, "value"))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/onnx/_internal/jit_utils.py", line 93, in op
+    return _add_op(self, opname, *raw_args, outputs=outputs, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/onnx/_internal/jit_utils.py", line 248, in _add_op
+    node = _create_node(
+           ^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/onnx/_internal/jit_utils.py", line 309, in _create_node
+    _C._jit_pass_onnx_node_shape_type_inference(node, params_dict, opset_version)
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 50.00 MiB. GPU 0 has a total capacity of 44.40 GiB of which 25.31 MiB is free. Process 612885 has 44.37 GiB memory in use. Of the allocated memory 43.42 GiB is allocated by PyTorch, and 458.52 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
