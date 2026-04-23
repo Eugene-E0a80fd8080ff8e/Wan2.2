@@ -76,6 +76,8 @@ def main():
 
     stem = model.stem
     stem.eval()
+    for p in stem.parameters():
+        p.requires_grad_(False)
 
     print(f"[run_export] exporting to {args.onnx} (opset={args.opset})")
     with torch.inference_mode(), torch.autocast(
