@@ -549,3 +549,63 @@ can we use bfloat16 for everything?
 RuntimeError: mixed dtype (CPU): expect parameter to have scalar type of Float
 
 Can we come back to doing it on GPU, but just clean up after every export ?
+
+---
+[2026-04-23 16:37:53]
+[2026-04-23 09:35:41,168] INFO: Audio embedding cache hit: ./Wan2.2-S2V-14B/audio_embed_cache/076b5fd7dca482623ead89949b92d7794f4acd4d51097d8f664211db6637aaac.pt
+[2026-04-23 09:35:41,502] INFO: VAE encode cache hit: ./Wan2.2-S2V-14B/vae_embed_cache/enc_93c572113f5741e0091f41a9012fe691d2df09f3c0122202989c350474281d8b.pt
+[2026-04-23 09:35:42,250] INFO: VAE encode cache hit: ./Wan2.2-S2V-14B/vae_embed_cache/enc_7e8d7dde18769f2eb4521d86a9d22f28a1f89fa656638418150642b725cba33f.pt
+[2026-04-23 09:35:43,582] INFO: VAE encode cache hit: ./Wan2.2-S2V-14B/vae_embed_cache/enc_706b635b0ae2b519b8bf8d1326c9a1c1b0f18d0041e960df191f008cd5d6432a.pt
+[2026-04-23 09:35:43,633] INFO: T5 embedding cache hit: ./Wan2.2-S2V-14B/t5_embed_cache/20dde52690cca817e53f6abae8a346dd574d349ca070ebb5acbc6d2d84935fa0.pt
+[2026-04-23 09:35:43,635] INFO: T5 embedding cache hit: ./Wan2.2-S2V-14B/t5_embed_cache/514e72c797f750e49a2acf8fde9b5516cdb4b428daca8cbd5f865b5d395e6c37.pt
+  0%|                                                                                                                                              | 0/16 [00:00<?, ?it/s]
+[stem] x.shape=(1, 16464, 5120)  original_seq_len=15680  seg_idx=15680
+[export_stem] captured stem inputs:
+  x                      Tensor (1, 16464, 5120) torch.bfloat16 dev=cuda:0
+  e                      Tensor (1, 6, 2, 5120) torch.float32 dev=cuda:0
+  seg_idx                Tensor () torch.int64 dev=cuda:0
+  seq_lens               Tensor (1,) torch.int64 dev=cpu
+  grid_sizes             list  [[tensor([[0, 0, 0]]), tensor([[20, 28, 28]]), tensor([[20, 28, 28]])], [tensor([[30,  0,  0]]), tensor([[31, 28, 28]]), tensor([[ 1, 28, 28]])]]
+  freqs                  Tensor (1, 16464, 40, 64, 2) torch.float32 dev=cuda:0
+  context                Tensor (1, 512, 5120) torch.bfloat16 dev=cuda:0
+  context_lens           NoneType  None
+  original_seq_len       Tensor () torch.int64 dev=cpu
+  merged_audio_emb       Tensor (1, 20, 5, 5120) torch.float32 dev=cuda:0
+  audio_emb_global       Tensor (1, 20, 1, 5120) torch.float32 dev=cuda:0
+[export_stem] saved inputs snapshot to /workspace/s2v_trt/stem.onnx.inputs.pt
+[export_stem] Phase 1 done. Now run:
+  python -m trt_conv.run_export --ckpt <checkpoint_dir> --inputs /workspace/s2v_trt/stem.onnx.inputs.pt --onnx /workspace/s2v_trt/stem.onnx
+  0%|                                                                                                                                              | 0/16 [00:02<?, ?it/s]
+root@C.35464689:/Wan2.2$ ls -lah /workspace/s2v_trt/
+total 490M
+drwxr-xr-x 2 root root   41 Apr 23 09:15 .
+drwxrwxrwx 1 root root   85 Apr 23 08:55 ..
+-rw-r--r-- 1 root root 490M Apr 23 09:35 stem.onnx.inputs.pt
+root@C.35464689:/Wan2.2$ 
+
+
+why stem is just 490 MB ?  is this correct ?
+
+---
+[2026-04-23 16:39:48]
+ah. okay.  this is phase 2:
+
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1741, in _slow_forward
+    result = self.forward(*input, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Wan2.2/wan/modules/s2v/model_s2v.py", line 319, in forward
+    x = block(x, **kwargs)
+        ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1741, in _slow_forward
+    result = self.forward(*input, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Wan2.2/wan/modules/s2v/model_s2v.py", line 221, in forward
+    assert e[0].dtype == torch.float32
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

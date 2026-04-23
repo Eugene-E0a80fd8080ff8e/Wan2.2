@@ -64,8 +64,6 @@ def main():
         v = snap[name]
         if isinstance(v, torch.Tensor):
             v = v.to(device)
-            if v.is_floating_point():
-                v = v.to(dtype) if name not in ("freqs",) else v.float()
         positional.append(v)
     positional = tuple(positional)
 
