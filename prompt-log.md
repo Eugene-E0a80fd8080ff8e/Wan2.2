@@ -618,3 +618,10 @@ File "/Wan2.2/wan/modules/s2v/model_s2v.py", line 226, in forward
     modulation = self.modulation.unsqueeze(2)
                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 RuntimeError: Cannot insert a Tensor that requires grad as a constant. Consider making it a parameter or input, or detaching the gradient
+
+---
+[2026-04-23 16:50:43]
+File "/Wan2.2/wan/modules/s2v/model_s2v.py", line 226, in forward
+    modulation = self.modulation.unsqueeze(2)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Cannot insert a Tensor that requires grad as a constant. Consider making it a parameter or input, or detaching the gradient

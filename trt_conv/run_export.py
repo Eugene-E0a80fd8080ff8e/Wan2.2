@@ -76,8 +76,16 @@ def main():
 
     stem = model.stem
     stem.eval()
+    for p in model.parameters():
+        p.requires_grad_(False)
     for p in stem.parameters():
         p.requires_grad_(False)
+    for blk in model.blocks:
+        for p in blk.parameters():
+            p.requires_grad_(False)
+    if hasattr(model, "audio_injector"):
+        for p in model.audio_injector.parameters():
+            p.requires_grad_(False)
 
     print(f"[run_export] exporting to {args.onnx} (opset={args.opset})")
     with torch.inference_mode(), torch.autocast(
