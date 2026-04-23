@@ -96,44 +96,9 @@ def install_export_hook(model, onnx_path=None, opset=17):
         }
         torch.save(cpu_inputs, inputs_pt)
         print(f"[export_stem] saved inputs snapshot to {inputs_pt}")
-
-        # Move the whole stem (blocks + audio injector) to CPU. Keep dtypes
-        # as-is (bf16 for the 14B of params). blocks/audio_injector are shared
-        # with the parent model via object.__setattr__, so stem.to("cpu") is a
-        # no-op — we have to move them explicitly.
-        print("[export_stem] moving stem submodules to CPU (bf16 preserved)...")
-        stem.blocks.to("cpu")
-        stem.audio_injector.to("cpu")
-        cpu_positional = tuple(
-            v.detach().cpu() if isinstance(v, torch.Tensor) else v
-            for v in positional
-        )
-        del positional
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-
-        # Restore the real forward before export, otherwise the tracer will
-        # re-enter `hooked` and call torch.onnx.export recursively.
-        if "forward" in stem.__dict__:
-            del stem.__dict__["forward"]
-
-        print(f"[export_stem] exporting ONNX to {onnx_path} (opset={opset})")
-        stem.eval()
-        # Wrap in CPU autocast so the tracer replicates the bf16/float32 mixing
-        # that normally happens on GPU under autocast. The tracer records the
-        # explicit cast ops inline, so the ONNX graph ends up consistent.
-        with torch.inference_mode(), torch.autocast(device_type="cpu", dtype=torch.bfloat16):
-            torch.onnx.export(
-                stem,
-                cpu_positional,
-                onnx_path,
-                input_names=TENSOR_INPUT_NAMES,
-                output_names=["out"],
-                opset_version=opset,
-                do_constant_folding=False,
-                dynamic_axes=None,
-            )
-        print(f"[export_stem] wrote {onnx_path}")
+        print(f"[export_stem] Phase 1 done. Now run:")
+        print(f"  python -m trt_conv.run_export --ckpt <checkpoint_dir> "
+              f"--inputs {inputs_pt} --onnx {onnx_path}")
         raise SystemExit(0)
 
     stem.forward = hooked
