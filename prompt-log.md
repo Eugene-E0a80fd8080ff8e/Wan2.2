@@ -481,3 +481,46 @@ File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 
   File "/usr/local/lib/python3.12/dist-packages/torch/onnx/_internal/jit_utils.py", line 309, in _create_node
     _C._jit_pass_onnx_node_shape_type_inference(node, params_dict, opset_version)
 torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 50.00 MiB. GPU 0 has a total capacity of 44.40 GiB of which 25.31 MiB is free. Process 612885 has 44.37 GiB memory in use. Of the allocated memory 43.42 GiB is allocated by PyTorch, and 458.52 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+
+---
+[2026-04-23 16:24:25]
+...
+  File "/Wan2.2/wan/modules/s2v/model_s2v.py", line 238, in forward
+    y = self.self_attn(norm_x, seq_lens, grid_sizes, freqs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1741, in _slow_forward
+    result = self.forward(*input, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Wan2.2/wan/modules/s2v/model_s2v.py", line 164, in forward
+    q, k, v = qkv_fn(x)
+              ^^^^^^^^^
+  File "/Wan2.2/wan/modules/s2v/model_s2v.py", line 159, in qkv_fn
+    q = self.norm_q(self.q(x)).view(b, s, n, d)
+                    ^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1741, in _slow_forward
+    result = self.forward(*input, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/linear.py", line 125, in forward
+    return F.linear(input, self.weight, self.bias)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: mat1 and mat2 must have the same dtype, but got Float and BFloat16
+
+---
+[2026-04-23 16:26:28]
+> Now everything entering the tracer is float32
+
+wait what?  float32 will double memory requirements.
+
+can we use bfloat16 for everything?
