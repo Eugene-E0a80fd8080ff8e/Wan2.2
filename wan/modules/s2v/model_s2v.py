@@ -306,6 +306,8 @@ class S2VBlockStem(nn.Module):
 
     def forward(self, x, e, seg_idx, seq_lens, grid_sizes, freqs, context, context_lens,
                 original_seq_len, merged_audio_emb, audio_emb_global):
+        print(f"[diag] S2VBlockStem.forward called, self.forward id: {id(self.forward)}, "
+              f"qualname: {getattr(self.forward, '__qualname__', '?')}")
         kwargs = dict(
             e=[e, seg_idx],
             seq_lens=seq_lens,

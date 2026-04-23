@@ -324,3 +324,57 @@ go on
 ---
 [2026-04-23 15:14:17]
 go on
+
+---
+[2026-04-23 15:36:46]
+...
+  File "/Wan2.2/wan/modules/s2v/model_s2v.py", line 857, in forward
+    x = self.stem(
+        ^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Wan2.2/wan/modules/s2v/model_s2v.py", line 292, in forward
+    x = block(x, **kwargs)
+        ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Wan2.2/wan/modules/s2v/model_s2v.py", line 213, in forward
+    y = self.self_attn(norm_x, seq_lens, grid_sizes, freqs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Wan2.2/wan/modules/s2v/model_s2v.py", line 166, in forward
+    x = flash_attention(
+        ^^^^^^^^^^^^^^^^
+  File "/Wan2.2/wan/modules/attention.py", line 112, in flash_attention
+    assert FLASH_ATTN_2_AVAILABLE
+           ^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+---
+[2026-04-23 16:02:50]
+<ide_selection>The user selected the lines 98 to 98 from /home/eugene/prj26/videogen1/Wan2.2/wan/modules/s2v/model_s2v.py:
+bfloat
+
+This may or may not be related to the current task.</ide_selection>
+okay. it is good.
+
+I have copied generate.py to a new file "generate_with_hook.py" and added a hook there.
+
+The video generates normally, but I see no new files in /workspace/s2v_trt/
+
+---
+[2026-04-23 16:06:31]
+could you please add (1) and (2) into files ? and I will just copy files to the remote and run there
