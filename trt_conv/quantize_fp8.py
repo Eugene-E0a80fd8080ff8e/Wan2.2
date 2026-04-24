@@ -18,14 +18,40 @@ Then build the engine:
 """
 import argparse
 
+import ml_dtypes
 import numpy as np
+import onnx
 import torch
 
 
-def _bf16_safe_numpy(t: torch.Tensor) -> np.ndarray:
+# ONNX tensor elem_type enum values we care about.
+_ONNX_FLOAT = 1
+_ONNX_INT64 = 7
+_ONNX_BFLOAT16 = 16
+_ONNX_FLOAT16 = 10
+
+
+def _cast_to_graph_dtype(arr: np.ndarray, elem_type: int) -> np.ndarray:
+    if elem_type == _ONNX_BFLOAT16:
+        return arr.astype(np.float32).astype(ml_dtypes.bfloat16)
+    if elem_type == _ONNX_FLOAT16:
+        return arr.astype(np.float16)
+    if elem_type == _ONNX_FLOAT:
+        return arr.astype(np.float32)
+    if elem_type == _ONNX_INT64:
+        return arr.astype(np.int64)
+    return arr
+
+
+def _tensor_to_numpy(t: torch.Tensor) -> np.ndarray:
     if t.dtype == torch.bfloat16:
         t = t.float()
     return t.detach().cpu().numpy()
+
+
+def _read_input_dtypes(onnx_path: str) -> dict[str, int]:
+    m = onnx.load(onnx_path, load_external_data=False)
+    return {inp.name: inp.type.tensor_type.elem_type for inp in m.graph.input}
 
 
 class _SingleSampleReader:
@@ -55,6 +81,7 @@ def main():
     from modelopt.onnx.quantization import quantize
 
     snap = torch.load(args.inputs, map_location="cpu", weights_only=False)
+    graph_dtypes = _read_input_dtypes(args.onnx)
     tensor_input_names = [
         "x", "e", "seq_lens", "freqs", "context",
         "merged_audio_emb", "audio_emb_global",
@@ -64,7 +91,11 @@ def main():
         v = snap[name]
         if not isinstance(v, torch.Tensor):
             continue
-        feed[name] = _bf16_safe_numpy(v)
+        arr = _tensor_to_numpy(v)
+        elem_type = graph_dtypes.get(name)
+        if elem_type is not None:
+            arr = _cast_to_graph_dtype(arr, elem_type)
+        feed[name] = arr
         print(f"[quantize_fp8] {name:22s} {feed[name].shape} {feed[name].dtype}")
 
     reader = _SingleSampleReader(feed)

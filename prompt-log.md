@@ -1069,3 +1069,234 @@ root@C.35504872:/workspace/Wan2.2$
 ---
 [2026-04-24 12:41:24]
 ah. okay. lets try fp8 first
+
+---
+[2026-04-24 12:48:25]
+...
+[W] Could not convert: BFLOAT16 to a corresponding NumPy type. The original ONNX type will be preserved. 
+[04/24/2026-05:45:53] [TRT] [W] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+WARNING:root:No custom ops found. If that's not correct, please make sure that the 'tensorrt' python package is correctly installed and that the paths to 'libcudnn*.so' and TensorRT 'lib/' are in 'LD_LIBRARY_PATH'. If the custom op is not directly available as a plugin in TensorRT, please also make sure that the path to the compiled '.so' TensorRT plugin is also being given via the  '--trt_plugins' flag (requires TRT 10+).
+INFO:root:Model /workspace/s2v_trt/stem.onnx with opset_version 17 is loaded.
+WARNING:root:Failed to enable ORT with CUDA EP: 'libcudnn_adv*.so* is not accessible in LD_LIBRARY_PATH! Please make sure that the path to that library is in the env var to use the CUDA or TensorRT EP and ensure that the correct version is available. Versioning compatibility can be checked at https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements.'
+INFO:root:Successfully imported the `tensorrt` python package with version 10.10.0.31.
+WARNING:root:Failed to enable ORT with TensorRT EP: 'libcudnn_adv*.so* is not accessible in LD_LIBRARY_PATH! Please make sure that the path to that library is in the env var to use the CUDA or TensorRT EP and ensure that the correct version is available. Versioning compatibility can be checked at https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements.'
+INFO:root:Successfully enabled 1 EPs for ORT: ['CPUExecutionProvider']
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8.py", line 84, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8.py", line 73, in main
+    quantize(
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py", line 357, in quantize
+    nodes_to_exclude = find_nodes_from_mha_to_exclude(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py", line 778, in find_nodes_from_mha_to_exclude
+    output_map = get_extended_model_outputs(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py", line 632, in get_extended_model_outputs
+    session = create_inference_session(extended_model.SerializeToString(), calibration_eps)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_utils.py", line 170, in create_inference_session
+    return ort.InferenceSession(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 465, in __init__
+    self._create_inference_session(providers, provider_options, disabled_optimizers)
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 537, in _create_inference_session
+    sess.initialize_session(providers, provider_options, disabled_optimizers)
+onnxruntime.capi.onnxruntime_pybind11_state.NotImplemented: [ONNXRuntimeError] : 9 : NOT_IMPLEMENTED : Could not find an implementation for MatMul(13) node with name '/MatMul'
+root@C.35504872:/workspace/Wan2.2$
+
+---
+[2026-04-24 12:50:16]
+> libs aren't on the LD path
+
+should I just install something ?
+
+---
+[2026-04-24 13:09:56]
+[04/24/2026-05:55:57] [E] Saving engine to file failed.
+okay I am running trtexec --onnx=/workspace/s2v_trt/stem.onnx \
+        --saveEngine=/workspace/s2v_trt/stem.fp8.trt \
+        --fp8 --bf16 \
+        --memPoolSize=workspace:8192 \
+        --verbose 2>&1 | tee /workspace/s2v_trt/trt_build_fp8.log
+---
+
+[04/24/2026-05:55:57] [E] Engine set up failed
+&&&& FAILED TensorRT.trtexec [TensorRT v101000] [b31] # trtexec --onnx=/workspace/s2v_trt/stem.onnx --saveEngine=/workspace/s2v_trt/stem.fp8.trt --fp8 --bf16 --memPoolSize=workspace:8192 --verbose
+root@C.35504872:/workspace/Wan2.2$ df -h
+Filesystem                         Size  Used Avail Use% Mounted on
+overlay                            160G  160G  3.2M 100% /
+tmpfs                               64M     0   64M   0% /dev
+shm                                113G     0  113G   0% /dev/shm
+/dev/nvme1n1p3                     3.5T  384G  3.2T  11% /etc/hosts
+/dev/mapper/ubuntu--vg-ubuntu--lv   98G   23G   71G  25% /usr/bin/nvidia-smi
+tmpfs                              4.0K  4.0K     0 100% /run/nvidia-ctk-hook3b4294e4-9099-493f-93c1-e5cde75a362c
+tmpfs                              567G     0  567G   0% /proc/acpi
+tmpfs                              567G     0  567G   0% /proc/scsi
+tmpfs                              567G     0  567G   0% /sys/firmware
+tmpfs                              567G     0  567G   0% /sys/devices/virtual/powercap
+root@C.35504872:/workspace/Wan2.2$ 
+
+---
+this need a clean up.  what may I delete from /workspace/s2v_trt/ ?
+
+---
+[2026-04-24 13:30:24]
+okay. all done.
+I am running:
+python generate_with_trt_fp8.py --task s2v-14B --size 480*480 \
+	--ckpt_dir ./Wan2.2-S2V-14B/ \
+	--offload_model True \
+	--convert_model_dtype \
+	--prompt "The girl smiles and talks to the camera."  \
+	--sample_steps 20 \
+	--image "face1.jpg" --audio "input2.wav"
+---
+but I see no speed improvement over bfloat16. it is exactly the same.
+
+also the size of stem.fp8.trt is 30G , so it did not decreased compared to bfloat16.
+
+---
+[2026-04-24 13:32:21]
+is this okay ?
+
+root@C.35504872:/workspace/Wan2.2$ dpkg -l | grep cudnn
+ii  libcudnn9-cuda-12                    9.10.1.4-1                        amd64        cuDNN runtime libraries for CUDA 12.9
+ii  libcudnn9-dev-cuda-12                9.10.1.4-1                        amd64        cuDNN development libraries for CUDA 12.9
+ii  libcudnn9-headers-cuda-12            9.10.1.4-1                        amd64        cuDNN header files for CUDA 12.9
+root@C.35504872:/workspace/Wan2.2$ nvidia-smi
+Fri Apr 24 06:31:45 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 590.48.01              Driver Version: 590.48.01      CUDA Version: 13.1     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA RTX PRO 6000 Blac...    On  |   00000000:06:00.0 Off |                    0 |
+| N/A   30C    P8             34W /  600W |       0MiB /  97887MiB |      0%      Default |
+|                                         |                        |             Disabled |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+root@C.35504872:/workspace/Wan2.2$ 
+
+can we go with 12.9 ?
+
+---
+[2026-04-24 13:45:12]
+2026-04-24 06:44:55.109810596 [W:onnxruntime:Default, tensorrt_execution_provider.h:90 log] [2026-04-24 06:44:55 WARNING] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+2026-04-24 06:44:55.110218418 [E:onnxruntime:Default, tensorrt_execution_provider.h:88 log] [2026-04-24 06:44:55   ERROR] WeightsContext.cpp:178: Failed to open file: _Constant_100_attr__value
+2026-04-24 06:44:55.110261992 [E:onnxruntime:Default, tensorrt_execution_provider.h:88 log] [2026-04-24 06:44:55   ERROR] In node -1 with name:  and operator:  (parseGraph): INVALID_GRAPH: Failed to import initialzer
+
+---
+[2026-04-24 13:47:04]
+may I just rm -rf /workspace/s2v_trt/
+and then do
+
+python -m trt_conv.run_export \
+  --ckpt ./Wan2.2-S2V-14B/ \
+  --inputs /workspace/s2v_trt/stem.onnx.inputs.pt \
+  --onnx /workspace/s2v_trt/stem.onnx
+
+?
+
+---
+[2026-04-24 13:48:48]
+Can you please save all the steps we did into a file, for future reference ?
+With motivation and explanation of every step
+
+---
+[2026-04-24 14:04:44]
+I regeneratad everything, but:
+
+2026-04-24 07:04:12.553423958 [W:onnxruntime:Default, tensorrt_execution_provider.h:90 log] [2026-04-24 07:04:12 WARNING] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+2026-04-24 07:04:12.553822537 [E:onnxruntime:Default, tensorrt_execution_provider.h:88 log] [2026-04-24 07:04:12   ERROR] WeightsContext.cpp:178: Failed to open file: _Constant_100_attr__value
+2026-04-24 07:04:12.553868154 [E:onnxruntime:Default, tensorrt_execution_provider.h:88 log] [2026-04-24 07:04:12   ERROR] In node -1 with name:  and operator:  (parseGraph): INVALID_GRAPH: Failed to import initialzer
+2026-04-24 07:04:13.255296420 [W:onnxruntime:Default, tensorrt_execution_provider.h:90 log] [2026-04-24 07:04:13 WARNING] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+2026-04-24 07:04:13.255700848 [E:onnxruntime:Default, tensorrt_execution_provider.h:88 log] [2026-04-24 07:04:13   ERROR] WeightsContext.cpp:178: Failed to open file: _Constant_100_attr__value
+2026-04-24 07:04:13.255744803 [E:onnxruntime:Default, tensorrt_execution_provider.h:88 log] [2026-04-24 07:04:13   ERROR] In node -1 with name:  and operator:  (parseGraph): INVALID_GRAPH: Failed to import initialzer
+2026-04-24 07:04:13.954166824 [W:onnxruntime:Default, tensorrt_execution_provider.h:90 log] [2026-04-24 07:04:13 WARNING] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+2026-04-24 07:04:13.954576259 [E:onnxruntime:Default, tensorrt_execution_provider.h:88 log] [2026-04-24 07:04:13   ERROR] WeightsContext.cpp:178: Failed to open file: _Constant_100_attr__value
+2026-04-24 07:04:13.954621937 [E:onnxruntime:Default, tensorrt_execution_provider.h:88 log] [2026-04-24 07:04:13   ERROR] In node -1 with name:  and operator:  (parseGraph): INVALID_GRAPH: Failed to import initialzer
+2026-04-24 07:04:14.656949318 [W:onnxruntime:Default, tensorrt_execution_provider.h:90 log] [2026-04-24 07:04:14 WARNING] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+2026-04-24 07:04:14.657354337 [E:onnxruntime:Default, tensorrt_execution_provider.h:88 log] [2026-04-24 07:04:14   ERROR] WeightsContext.cpp:178: Failed to open file: _Constant_100_attr__value
+2026-04-24 07:04:14.657399133 [E:onnxruntime:Default, tensorrt_execution_provider.h:88 log] [2026-04-24 07:04:14   ERROR] In node -1 with name:  and operator:  (parseGraph): INVALID_GRAPH: Failed to import initialzer
+
+---
+[2026-04-24 14:08:20]
+root@C.35504872:/workspace/Wan2.2$ ls /workspace/s2v_trt/ | head -20
+ls /workspace/s2v_trt/ | wc -l
+find / -name "_Constant_100_attr__value" 2>/dev/null
+Constant_10715_attr__value
+Constant_10716_attr__value
+Constant_11563_attr__value
+Constant_11564_attr__value
+Constant_12174_attr__value
+Constant_12175_attr__value
+Constant_12785_attr__value
+Constant_12786_attr__value
+Constant_13396_attr__value
+Constant_13397_attr__value
+Constant_14239_attr__value
+Constant_14240_attr__value
+Constant_14850_attr__value
+Constant_14851_attr__value
+Constant_15461_attr__value
+Constant_15462_attr__value
+Constant_16072_attr__value
+Constant_16073_attr__value
+Constant_16915_attr__value
+Constant_16916_attr__value
+1450
+/workspace/s2v_trt/_Constant_100_attr__value
+root@C.35504872:/workspace/Wan2.2$ 
+
+
+---
+
+root@C.35504872:/workspace/Wan2.2$ cd /workspace/s2v_trt && python -m trt_conv.quantize_fp8 \
+    --onnx stem.onnx --inputs stem.onnx.inputs.pt --out stem.fp8.onnx
+/usr/bin/python: Error while finding module specification for 'trt_conv.quantize_fp8' (ModuleNotFoundError: No module named 'trt_conv')
+root@C.35504872:/workspace/s2v_trt$ 
+
+okay. how do I let python know where is trt_conv.quantize_fp8 ?
+
+---
+[2026-04-24 14:12:17]
+WARNING:root:No custom ops found. If that's not correct, please make sure that the 'tensorrt' python package is correctly installed and that the paths to 'libcudnn*.so' and TensorRT 'lib/' are in 'LD_LIBRARY_PATH'. If the custom op is not directly available as a plugin in TensorRT, please also make sure that the path to the compiled '.so' TensorRT plugin is also being given via the  '--trt_plugins' flag (requires TRT 10+).
+INFO:root:Model stem.onnx with opset_version 17 is loaded.
+INFO:root:libcudnn_adv*.so* is accessible in /usr/lib/x86_64-linux-gnu/libcudnn_adv.so! Please check that this is the correct version needed for your ORT version at https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements.
+INFO:root:Successfully imported the `tensorrt` python package with version 10.10.0.31.
+INFO:root:libcudnn_adv*.so* is accessible in /usr/lib/x86_64-linux-gnu/libcudnn_adv.so! Please check that this is the correct version needed for your ORT version at https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements.
+INFO:root:Successfully enabled 3 EPs for ORT: ['CPUExecutionProvider', ('CUDAExecutionProvider', {'device_id': 0}), 'TensorrtExecutionProvider']
+2026-04-24 07:10:04.240766032 [W:onnxruntime:Default, tensorrt_execution_provider.h:90 log] [2026-04-24 07:10:04 WARNING] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+2026-04-24 07:10:28.344447510 [W:onnxruntime:, transformer_memcpy.cc:74 ApplyImpl] 1944 Memcpy nodes are added to the graph main_graph for CUDAExecutionProvider. It might have negative impact on performance (including unable to run CUDA graph). Set session_options.log_severity_level=1 to see the detail logs before this message.
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8.py", line 84, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8.py", line 73, in main
+    quantize(
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py", line 357, in quantize
+    nodes_to_exclude = find_nodes_from_mha_to_exclude(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py", line 778, in find_nodes_from_mha_to_exclude
+    output_map = get_extended_model_outputs(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py", line 636, in get_extended_model_outputs
+    outputs = session.run(extended_model_output_names, inputs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 266, in run
+    return self._sess.run(output_names, input_feed, run_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+onnxruntime.capi.onnxruntime_pybind11_state.InvalidArgument: [ONNXRuntimeError] : 2 : INVALID_ARGUMENT : Unexpected input data type. Actual: (tensor(float)) , expected: (tensor(bfloat16))
