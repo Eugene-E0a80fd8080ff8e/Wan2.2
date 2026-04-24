@@ -969,3 +969,10 @@ It works! Thank you!
 I believe generate_with_trt.py still loads the entire S2V weights, including stem, twice. and now it takes > 60 gigs . I had to switch from L40S to RTX PRO 6000
 
 Can we make a custom loader, which would skip stem part from the original weights ?
+
+---
+[2026-04-24 12:15:01]
+<ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/generate_with_trt.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
+thanks. this works, but this still uses a lot of memory. In fact, the peak memory consumption should be the same
+Can you load only the needed parts ?
+If you need, please you may prepare a different file to load, by picking parts from the current

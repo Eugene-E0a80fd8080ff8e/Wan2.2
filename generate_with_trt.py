@@ -480,6 +480,9 @@ def generate(args):
             seed=args.base_seed,
             offload_model=args.offload_model)
     elif "s2v" in args.task:
+        from trt_conv.load_s2v_no_stem import install_no_stem_loader
+        install_no_stem_loader()
+
         logging.info("Creating WanS2V pipeline.")
         wan_s2v = wan.WanS2V(
             config=cfg,
@@ -496,24 +499,10 @@ def generate(args):
         from trt_conv.stem_runner import StemTRTRunner
         trt_engine_path = "/workspace/s2v_trt/stem.trt"
         trt_runner = StemTRTRunner(trt_engine_path, device=f"cuda:{device}")
-        nm = wan_s2v.noise_model
-        nm.stem.forward = trt_runner.forward
-
-        # Free PyTorch copies of stem-owned modules now that TRT owns them.
-        # stem holds its own refs via object.__setattr__, so break both sides.
-        import gc
-        if hasattr(nm.stem, "blocks"):
-            object.__setattr__(nm.stem, "blocks", None)
-        if hasattr(nm.stem, "audio_injector"):
-            object.__setattr__(nm.stem, "audio_injector", None)
-        for attr in ("blocks", "audio_injector"):
-            if hasattr(nm, attr):
-                delattr(nm, attr)
-        gc.collect()
-        torch.cuda.empty_cache()
+        wan_s2v.noise_model.stem.forward = trt_runner.forward
         free, total = torch.cuda.mem_get_info()
         print(f"[diag] TRT stem installed from {trt_engine_path}; "
-              f"GPU mem after trim: {(total-free)/1e9:.1f}/{total/1e9:.1f} GB used")
+              f"GPU mem: {(total-free)/1e9:.1f}/{total/1e9:.1f} GB used")
 
         logging.info(f"Generating video ...")
         video = wan_s2v.generate(
