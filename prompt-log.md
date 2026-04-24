@@ -1005,3 +1005,67 @@ root@C.35504872:/workspace/Wan2.2$
 ---
 [2026-04-24 12:35:34]
 /usr/bin/python: No module named trt_conv.quantize_fp4
+
+---
+[2026-04-24 12:37:32]
+h yeah. thanks.
+
+---
+
+root@C.35504872:/workspace/Wan2.2$ python -m trt_conv.quantize_fp4     --onnx /workspace/s2v_trt/stem.onnx     --inputs /workspace/s2v_trt/stem.onnx.inputs.pt     --out /workspace/s2v_trt/stem.fp4.onnx
+[quantize_fp4] x                      (1, 16464, 5120) float32
+[quantize_fp4] e                      (1, 6, 2, 5120) float32
+[quantize_fp4] seq_lens               (1,) int64
+[quantize_fp4] freqs                  (1, 16464, 40, 64, 2) float32
+[quantize_fp4] context                (1, 512, 5120) float32
+[quantize_fp4] merged_audio_emb       (1, 20, 5, 5120) float32
+[quantize_fp4] audio_emb_global       (1, 20, 1, 5120) float32
+[quantize_fp4] quantizing /workspace/s2v_trt/stem.onnx → /workspace/s2v_trt/stem.fp4.onnx (NVFP4)
+[W] colored module is not installed, will not use colors when logging. To enable colors, please install the colored module: python3 -m pip install colored
+[W] Could not convert: BFLOAT16 to a corresponding NumPy type. The original ONNX type will be preserved. 
+[04/24/2026-05:36:30] [TRT] [W] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+WARNING:root:No custom ops found. If that's not correct, please make sure that the 'tensorrt' python package is correctly installed and that the paths to 'libcudnn*.so' and TensorRT 'lib/' are in 'LD_LIBRARY_PATH'. If the custom op is not directly available as a plugin in TensorRT, please also make sure that the path to the compiled '.so' TensorRT plugin is also being given via the  '--trt_plugins' flag (requires TRT 10+).
+INFO:root:Model /workspace/s2v_trt/stem.onnx with opset_version 17 is loaded.
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_fp4.py", line 84, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_fp4.py", line 73, in main
+    quantize(
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py", line 405, in quantize
+    raise RuntimeError(f"Invalid quantization mode choice: {quantize_mode}")
+RuntimeError: Invalid quantization mode choice: fp4
+
+---
+[2026-04-24 12:39:04]
+root@C.35504872:/workspace/Wan2.2$ grep -n "Invalid quantization mode\|quantize_mode\s*=\|quantize_modes" /usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py | head
+273:            If quantize_mode == 'fp8' and mha_accumulation_dtype == 'fp32', Cast nodes will be added to
+353:    # (2) else when quantize_mode == "int8", if seq_len > 512, don't add Q/DQ layers to
+355:    # (2) else when quantize_mode == "fp8", if head_size > 256 or head_size <= 8
+370:        quantize_func = quantize_int8 if quantize_mode == "int8" else quantize_fp8
+371:        default_calibration_method = "entropy" if quantize_mode == "int8" else "max"
+405:        raise RuntimeError(f"Invalid quantization mode choice: {quantize_mode}")
+
+---
+[2026-04-24 12:40:10]
+root@C.35504872:/workspace/Wan2.2$ ls /usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/
+grep -rn "fp4\|nvfp4\|FP4\|NVFP4" /usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ | head -30
+__init__.py  __pycache__     extensions.py  graph_utils.py  int4.py  operators.py     ort_utils.py     qdq_utils.py    quantize.py  trt_utils.py
+__main__.py  calib_utils.py  fp8.py         gs_patching.py  int8.py  ort_patching.py  partitioning.py  quant_utils.py  src
+grep: /usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/__pycache__/qdq_utils.cpython-312.pyc: binary file matches
+grep: /usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/__pycache__/quant_utils.cpython-312.pyc: binary file matches
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/qdq_utils.py:601:def replace_fp4qdq_with_2dq(
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/qdq_utils.py:709:def fp4qdq_to_2dq(onnx_model: onnx.onnx_pb.ModelProto) -> onnx.onnx_pb.ModelProto:
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/qdq_utils.py:710:    """Convert FP32/FP16 weights of the given ONNX model to FP4 weights and scaling factors.
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/qdq_utils.py:712:    TRT_FP4QDQ nodes will get removed from the weights and have two DQ nodes with those converted FP4
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/qdq_utils.py:781:    print("Post-processing TRT_FP4QDQ nodes for TRT deployment...")
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/qdq_utils.py:783:    fp4_qdq_nodes = [node for node in graph.node if node.op_type == "TRT_FP4QDQ"]
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/qdq_utils.py:785:    for node in fp4_qdq_nodes:
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/qdq_utils.py:801:        replace_fp4qdq_with_2dq(
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quant_utils.py:164:    """Converting a tensor to a quantized format based on NVFP4 quantization."""
+root@C.35504872:/workspace/Wan2.2$
+
+---
+[2026-04-24 12:41:24]
+ah. okay. lets try fp8 first
