@@ -83,11 +83,14 @@ def main():
 
     from modelopt.onnx.quantization import quantize
     from modelopt.onnx.quantization import graph_utils as _gu
+    from modelopt.onnx.quantization import quantize as _q_mod
 
     # Skip MHA-exclusion analysis: it runs the bf16 graph through ORT which
     # fails because ORT's Python API can't take bf16 inputs cleanly. This only
     # affects whether certain MHA-adjacent nodes get quantized; benign to skip.
-    _gu.find_nodes_from_mha_to_exclude = lambda *a, **kw: []
+    _stub = lambda *a, **kw: []
+    _gu.find_nodes_from_mha_to_exclude = _stub
+    _q_mod.find_nodes_from_mha_to_exclude = _stub
 
     snap = torch.load(args.inputs, map_location="cpu", weights_only=False)
     graph_dtypes = _read_input_dtypes(args.onnx)
