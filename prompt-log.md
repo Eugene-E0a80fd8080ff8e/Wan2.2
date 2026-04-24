@@ -941,3 +941,23 @@ Loading checkpoint shards: 100%|████████████████
 [test] trt stats    : min=-11.62 max=113
 [test] pt  stats    : min=-11.7 max=113
 root@C.35504872:/workspace/Wan2.2$
+
+---
+[2026-04-24 11:58:44]
+<ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/trt_conv/stem_runner.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
+> Quick additional check — what fraction of elements are "close"?
+
+[diag] S2VBlockStem.forward called, self.forward id: 140215026020864, qualname: S2VBlockStem.forward
+[test] shape        = (1, 16464, 5120)
+[test] max abs diff = 3.98837
+[test] mean abs diff= 0.0175179
+[test] trt stats    : min=-11.62 max=113
+[test] pt  stats    : min=-11.7 max=113
+[test] within 0.01: 43.311%
+[test] within  0.1: 99.125%
+[test] within  1.0: 99.999%
+
+---
+[2026-04-24 12:00:14]
+please preserve  generate_with_hook.py and instead create
+ generate_with_trt.py no need for flag
