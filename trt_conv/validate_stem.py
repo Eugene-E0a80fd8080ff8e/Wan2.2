@@ -68,28 +68,35 @@ def run_pytorch(args, snap, dtype, device):
 
 def run_onnx(args, snap):
     import onnxruntime as ort
+    from torch.utils.dlpack import to_dlpack
     providers = (["CUDAExecutionProvider", "CPUExecutionProvider"]
                  if "CUDAExecutionProvider" in ort.get_available_providers()
                  else ["CPUExecutionProvider"])
     print(f"[validate] onnxruntime providers: {providers}")
     sess = ort.InferenceSession(args.onnx, providers=providers)
 
-    expected = {i.name for i in sess.get_inputs()}
-    print(f"[validate] onnx graph inputs: {sorted(expected)}")
+    expected = [(i.name, i.type) for i in sess.get_inputs()]
+    print(f"[validate] onnx graph inputs: {expected}")
 
-    feed = {}
+    device = torch.device(args.device)
+    io = sess.io_binding()
     for name in TENSOR_INPUT_NAMES:
-        if name not in expected:
+        names_in_graph = {n for n, _ in expected}
+        if name not in names_in_graph:
             print(f"[validate] warn: {name} absent from onnx graph (folded?)")
             continue
         v = snap[name]
         if not isinstance(v, torch.Tensor):
             raise RuntimeError(f"snap[{name}] is {type(v)}, expected Tensor")
-        feed[name] = _to_numpy(v)
+        t = v.to(device).contiguous()
+        ov = ort.OrtValue.from_dlpack(to_dlpack(t), False)
+        io.bind_ortvalue_input(name, ov)
 
-    out_names = [o.name for o in sess.get_outputs()]
-    outs = sess.run(out_names, feed)
-    return torch.from_numpy(outs[0])
+    out_name = sess.get_outputs()[0].name
+    io.bind_output(out_name, device_type="cuda", device_id=0)
+    sess.run_with_iobinding(io)
+    ort_out = io.get_outputs()[0]
+    return torch.from_dlpack(ort_out._ortvalue.to_dlpack())
 
 
 def compare(a: torch.Tensor, b: torch.Tensor):

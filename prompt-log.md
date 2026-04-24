@@ -754,3 +754,31 @@ Traceback (most recent call last):
   File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 299, in _validate_input
     raise ValueError(
 ValueError: Required inputs (['onnx::Split_10', 'onnx::MatMul_11', 'onnx::Unsqueeze_12', 'merged_audio_emb.1', 'tensor.5']) are missing from input feed (['x', 'e', 'seq_lens']).
+
+---
+[2026-04-24 11:02:19]
+I have regenerated the phase2.
+
+now this error:
+...
+[0;93m2026-04-24 04:00:42.759103068 [W:onnxruntime:, constant_folding.cc:278 ApplyImpl] Could not find a CPU kernel and hence can't constant fold Sqrt node '/Sqrt_412'[m
+[0;93m2026-04-24 04:00:42.759110840 [W:onnxruntime:, constant_folding.cc:278 ApplyImpl] Could not find a CPU kernel and hence can't constant fold Sqrt node '/Sqrt_422'[m
+[0;93m2026-04-24 04:00:42.759117139 [W:onnxruntime:, constant_folding.cc:278 ApplyImpl] Could not find a CPU kernel and hence can't constant fold Sqrt node '/Sqrt_427'[m
+[0;93m2026-04-24 04:00:42.759125341 [W:onnxruntime:, constant_folding.cc:278 ApplyImpl] Could not find a CPU kernel and hence can't constant fold Sqrt node '/Sqrt_437'[m
+[0;93m2026-04-24 04:00:42.759134785 [W:onnxruntime:, constant_folding.cc:278 ApplyImpl] Could not find a CPU kernel and hence can't constant fold Sqrt node '/Sqrt_447'[m
+[0;93m2026-04-24 04:00:42.759143538 [W:onnxruntime:, constant_folding.cc:278 ApplyImpl] Could not find a CPU kernel and hence can't constant fold Sqrt node '/Sqrt_457'[m
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/validate_stem.py", line 136, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/validate_stem.py", line 131, in main
+    onnx_out = run_onnx(args, snap)
+               ^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Wan2.2/trt_conv/validate_stem.py", line 91, in run_onnx
+    outs = sess.run(out_names, feed)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 321, in run
+    return self._sess.run(output_names, input_feed, run_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+onnxruntime.capi.onnxruntime_pybind11_state.InvalidArgument: [ONNXRuntimeError] : 2 : INVALID_ARGUMENT : Unexpected input data type. Actual: (tensor(float)) , expected: (tensor(bfloat16))
