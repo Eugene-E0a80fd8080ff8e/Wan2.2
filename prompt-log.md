@@ -912,3 +912,32 @@ okay. good. lets have fixed resolution
 
 
 okay, seems like it finished.
+
+---
+[2026-04-24 11:52:42]
+<ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/trt_conv/stem_runner.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
+root@C.35504872:/workspace/Wan2.2$ python -m trt_conv.stem_runner \
+    --engine /workspace/s2v_trt/stem.trt \
+    --inputs /workspace/s2v_trt/stem.onnx.inputs.pt \
+    --ckpt ./Wan2.2-S2V-14B/
+[StemTRT] loaded /workspace/s2v_trt/stem.trt
+[StemTRT] inputs : ['x', 'e', 'seq_lens', 'freqs', 'context', 'merged_audio_emb', 'audio_emb_global']
+[StemTRT] outputs: ['out']
+[04/24/2026-04:51:59] [TRT] [W] Using default stream in enqueueV3() may lead to performance issues due to additional calls to cudaStreamSynchronize() by TensorRT to ensure correct synchronization. Please use non-default stream instead.
+[test] trt output: shape=(1, 16464, 5120) dtype=torch.float32
+/workspace/Wan2.2/wan/modules/s2v/motioner.py:30: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  @amp.autocast(enabled=False)
+/workspace/Wan2.2/wan/modules/s2v/motioner.py:41: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  @amp.autocast(enabled=False)
+/workspace/Wan2.2/wan/modules/s2v/model_s2v.py:61: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  @amp.autocast(enabled=False)
+/workspace/Wan2.2/wan/modules/s2v/model_s2v.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  @amp.autocast(enabled=False)
+Loading checkpoint shards: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████| 4/4 [00:04<00:00,  1.00s/it]
+[diag] S2VBlockStem.forward called, self.forward id: 140376862030400, qualname: S2VBlockStem.forward
+[test] shape        = (1, 16464, 5120)
+[test] max abs diff = 3.98837
+[test] mean abs diff= 0.0175179
+[test] trt stats    : min=-11.62 max=113
+[test] pt  stats    : min=-11.7 max=113
+root@C.35504872:/workspace/Wan2.2$

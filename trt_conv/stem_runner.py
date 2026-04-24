@@ -169,3 +169,9 @@ if __name__ == "__main__":
     print(f"[test] mean abs diff= {diff.mean().item():.6g}")
     print(f"[test] trt stats    : min={a.min().item():.4g} max={a.max().item():.4g}")
     print(f"[test] pt  stats    : min={b.min().item():.4g} max={b.max().item():.4g}")
+    
+    
+    for thr in [0.01, 0.1, 1.0]:
+        pct = (diff < thr).float().mean().item() * 100
+        print(f"[test] within {thr:>4}: {pct:6.3f}%")
+
