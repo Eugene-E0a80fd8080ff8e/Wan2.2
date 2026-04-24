@@ -881,3 +881,34 @@ okay. this is for resulotion.  how about audio length ? will it be fixed as well
 ---
 [2026-04-24 11:40:53]
 okay. good. lets have fixed resolution
+
+---
+[2026-04-24 11:49:55]
+...
+[04/24/2026-04:49:03] [I] === Performance summary ===
+[04/24/2026-04:49:03] [I] Throughput: 0.366471 qps
+[04/24/2026-04:49:03] [I] Latency: min = 2493.97 ms, max = 2495.86 ms, mean = 2495.25 ms, median = 2495.38 ms, percentile(90%) = 2495.78 ms, percentile(95%) = 2495.86 ms, percentile(99%) = 2495.86 ms
+[04/24/2026-04:49:03] [I] Enqueue Time: min = 2396.5 ms, max = 2400.42 ms, mean = 2397.9 ms, median = 2397.75 ms, percentile(90%) = 2398.35 ms, percentile(95%) = 2400.42 ms, percentile(99%) = 2400.42 ms
+[04/24/2026-04:49:03] [I] H2D Latency: min = 8.94361 ms, max = 8.96094 ms, mean = 8.95073 ms, median = 8.94971 ms, percentile(90%) = 8.95703 ms, percentile(95%) = 8.96094 ms, percentile(99%) = 8.96094 ms
+[04/24/2026-04:49:03] [I] GPU Compute Time: min = 2478.99 ms, max = 2480.87 ms, mean = 2480.22 ms, median = 2480.3 ms, percentile(90%) = 2480.81 ms, percentile(95%) = 2480.87 ms, percentile(99%) = 2480.87 ms
+[04/24/2026-04:49:03] [I] D2H Latency: min = 6.02734 ms, max = 6.32812 ms, mean = 6.08481 ms, median = 6.0293 ms, percentile(90%) = 6.23242 ms, percentile(95%) = 6.32812 ms, percentile(99%) = 6.32812 ms
+[04/24/2026-04:49:03] [I] Total Host Walltime: 27.2873 s
+[04/24/2026-04:49:03] [I] Total GPU Compute Time: 24.8022 s
+[04/24/2026-04:49:03] [W] * Throughput may be bound by Enqueue Time rather than GPU Compute and the GPU may be under-utilized.
+[04/24/2026-04:49:03] [W]   If not already in use, --useCudaGraph (utilize CUDA graphs where possible) may increase the throughput.
+[04/24/2026-04:49:03] [I] Explanations of the performance metrics are printed in the verbose logs.
+[04/24/2026-04:49:03] [V] 
+[04/24/2026-04:49:03] [V] === Explanations of the performance metrics ===
+[04/24/2026-04:49:03] [V] Total Host Walltime: the host walltime from when the first query (after warmups) is enqueued to when the last query is completed.
+[04/24/2026-04:49:03] [V] GPU Compute Time: the GPU latency to execute the kernels for a query.
+[04/24/2026-04:49:03] [V] Total GPU Compute Time: the summation of the GPU Compute Time of all the queries. If this is significantly shorter than Total Host Walltime, the GPU may be under-utilized because of host-side overheads or data transfers.
+[04/24/2026-04:49:03] [V] Throughput: the observed throughput computed by dividing the number of queries by the Total Host Walltime. If this is significantly lower than the reciprocal of GPU Compute Time, the GPU may be under-utilized because of host-side overheads or data transfers.
+[04/24/2026-04:49:03] [V] Enqueue Time: the host latency to enqueue a query. If this is longer than GPU Compute Time, the GPU may be under-utilized.
+[04/24/2026-04:49:03] [V] H2D Latency: the latency for host-to-device data transfers for input tensors of a single query.
+[04/24/2026-04:49:03] [V] D2H Latency: the latency for device-to-host data transfers for output tensors of a single query.
+[04/24/2026-04:49:03] [V] Latency: the summation of H2D Latency, GPU Compute Time, and D2H Latency. This is the latency to infer a single query.
+[04/24/2026-04:49:03] [I] 
+&&&& PASSED TensorRT.trtexec [TensorRT v101000] [b31] # trtexec --onnx=/workspace/s2v_trt/stem.onnx --saveEngine=/workspace/s2v_trt/stem.trt --bf16 --memPoolSize=workspace:8192 --verbose
+
+
+okay, seems like it finished.
