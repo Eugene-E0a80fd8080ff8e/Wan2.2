@@ -961,3 +961,11 @@ root@C.35504872:/workspace/Wan2.2$
 [2026-04-24 12:00:14]
 please preserve  generate_with_hook.py and instead create
  generate_with_trt.py no need for flag
+
+---
+[2026-04-24 12:07:42]
+It works! Thank you!
+
+I believe generate_with_trt.py still loads the entire S2V weights, including stem, twice. and now it takes > 60 gigs . I had to switch from L40S to RTX PRO 6000
+
+Can we make a custom loader, which would skip stem part from the original weights ?
