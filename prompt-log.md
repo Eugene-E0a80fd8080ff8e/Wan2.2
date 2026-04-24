@@ -826,3 +826,58 @@ AttributeError: type object 'OrtValue' has no attribute 'from_dlpack'
 [2026-04-24 11:16:40]
 root@C.35504872:/workspace/Wan2.2$ python -c "import onnxruntime; print(onnxruntime.__version__)"
 1.25.0
+
+---
+[2026-04-24 11:21:15]
+<ide_selection>The user selected the lines 88 to 88 from /home/eugene/prj26/videogen1/Wan2.2/trt_conv/validate_stem.py:
+dlpa
+
+This may or may not be related to the current task.</ide_selection>
+RuntimeError: Error in execution: Non-zero status code returned while running Cast node. Name:'/Cast_18' Status Message: /onnxruntime_src/onnxruntime/core/framework/bfc_arena.cc:358 void* onnxruntime::BFCArena::AllocateRawInternal(size_t, bool, onnxruntime::Stream*) Failed to allocate memory for requested buffer of size 43370127360
+
+---
+[2026-04-24 11:23:10]
+why do we have ort anyway ?  isnt it just to fix a single float32 convertion ?
+
+---
+[2026-04-24 11:24:36]
+can't we just agree on interfaces ?
+lets say we going to use bfloat16 in stem's input, output , and adjacent interfaces ?
+
+---
+[2026-04-24 11:28:39]
+<ide_selection>The user selected the lines 221 to 221 from /home/eugene/prj26/videogen1/Wan2.2/wan/modules/s2v/model_s2v.py:
+assert e[0].dtype == torch.float32
+
+This may or may not be related to the current task.</ide_selection>
+wait. I see line lines:
+
+assert e[0].dtype == torch.float32
+seg_idx = e[1].item()
+
+how seg_idx could be int64 , if e is fp32 ?
+is e even a tensor ?
+
+---
+[2026-04-24 11:30:36]
+okay. you use ort , dlpack .
+
+what do you use for?  for type conversion? don't we have a well-defined interface now ?
+
+---
+[2026-04-24 11:32:16]
+okay. please do
+
+---
+[2026-04-24 11:37:01]
+> no dynamic axes
+
+does this affects ability to produce different resolutions ?
+
+---
+[2026-04-24 11:39:00]
+okay. this is for resulotion.  how about audio length ? will it be fixed as well ?
+
+---
+[2026-04-24 11:40:53]
+okay. good. lets have fixed resolution
