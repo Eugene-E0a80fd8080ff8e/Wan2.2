@@ -625,3 +625,26 @@ File "/Wan2.2/wan/modules/s2v/model_s2v.py", line 226, in forward
     modulation = self.modulation.unsqueeze(2)
                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 RuntimeError: Cannot insert a Tensor that requires grad as a constant. Consider making it a parameter or input, or detaching the gradient
+
+---
+[2026-04-24 10:34:59]
+well, it have finished:
+
+[run_export] exporting to /workspace/s2v_trt/stem.onnx (opset=17)
+[diag] S2VBlockStem.forward called, self.forward id: 140231571081536, qualname: S2VBlockStem.forward
+/workspace/Wan2.2/wan/modules/s2v/model_s2v.py:222: TracerWarning: Converting a tensor to a Python number might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  seg_idx = e[1].item()
+/workspace/Wan2.2/wan/modules/s2v/model_s2v.py:223: TracerWarning: Converting a tensor to a Python boolean might cause the trace to be incorrect. We can't record the data flow of Python values, so this value will be treated as a constant in the future. This means that the trace might not generalize to other inputs!
+  seg_idx = min(max(0, seg_idx), x.size(1))
+[run_export] wrote /workspace/s2v_trt/stem.onnx
+root@C.35504872:/workspace/Wan2.2$ 
+
+
+Are those tracer warnings okay ?
+
+---
+[2026-04-24 10:37:42]
+okay. whatever.  we have stem.onnx now:
+[run_export] wrote /workspace/s2v_trt/stem.onnx
+
+lets move on
