@@ -1367,3 +1367,28 @@ $ sed -n '600,640p' /usr/local/lib/python3.12/dist-packages/modelopt/onnx/quanti
     output_map = {name: output for name, output in zip(extended_model_output_names, outputs)}
 
     return output_map
+
+---
+[2026-04-24 14:22:42]
+2026-04-24 07:21:36.789792249 [W:onnxruntime:Default, tensorrt_execution_provider.h:90 log] [2026-04-24 07:21:36 WARNING] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+2026-04-24 07:22:00.832613235 [W:onnxruntime:, transformer_memcpy.cc:74 ApplyImpl] 1944 Memcpy nodes are added to the graph main_graph for CUDAExecutionProvider. It might have negative impact on performance (including unable to run CUDA graph). Set session_options.log_severity_level=1 to see the detail logs before this message.
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8.py", line 118, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8.py", line 107, in main
+    quantize(
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py", line 357, in quantize
+    nodes_to_exclude = find_nodes_from_mha_to_exclude(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py", line 778, in find_nodes_from_mha_to_exclude
+    output_map = get_extended_model_outputs(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py", line 636, in get_extended_model_outputs
+    outputs = session.run(extended_model_output_names, inputs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 266, in run
+    return self._sess.run(output_names, input_feed, run_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+onnxruntime.capi.onnxruntime_pybind11_state.InvalidArgument: [ONNXRuntimeError] : 2 : INVALID_ARGUMENT : Unexpected input data type. Actual: (tensor(float)) , expected: (tensor(bfloat16))
