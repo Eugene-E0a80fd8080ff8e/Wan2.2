@@ -54,7 +54,8 @@ def run_pytorch(args, snap, dtype, device):
             v = v.to(device)
         positional.append(v)
 
-    with torch.inference_mode():
+    with torch.inference_mode(), torch.autocast(
+            device_type="cuda", dtype=dtype, enabled=(dtype != torch.float32)):
         out = stem(*positional)
 
     out_cpu = out.detach().cpu()

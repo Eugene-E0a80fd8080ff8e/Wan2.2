@@ -648,3 +648,78 @@ okay. whatever.  we have stem.onnx now:
 [run_export] wrote /workspace/s2v_trt/stem.onnx
 
 lets move on
+
+---
+[2026-04-24 10:43:05]
+[validate] loading inputs from /workspace/s2v_trt/stem.onnx.inputs.pt
+[validate] loading pytorch model from ./Wan2.2-S2V-14B/
+[diag] S2VBlockStem.forward called, self.forward id: 139850184558464, qualname: S2VBlockStem.forward
+odules/s2v/motioner.py:41: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  @amp.autocast(enabled=False)
+/workspace/Wan2.2/wan/modules/s2v/model_s2v.py:61: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  @amp.autocast(enabled=False)
+/workspace/Wan2.2/wan/modules/s2v/model_s2v.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  @amp.autocast(enabled=False)
+
+Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]
+Loading checkpoint shards:  25%|██▌       | 1/4 [00:01<00:03,  1.22s/it]
+Loading checkpoint shards:  50%|█████     | 2/4 [00:02<00:02,  1.22s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:03<00:01,  1.25s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:04<00:00,  1.12it/s]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:04<00:00,  1.02s/it]
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/validate_stem.py", line 135, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/validate_stem.py", line 129, in main
+    pt_out = run_pytorch(args, snap, dtype, device)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Wan2.2/trt_conv/validate_stem.py", line 58, in run_pytorch
+    out = stem(*positional)
+          ^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Wan2.2/wan/modules/s2v/model_s2v.py", line 319, in forward
+    x = block(x, **kwargs)
+        ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Wan2.2/wan/modules/s2v/model_s2v.py", line 238, in forward
+    y = self.self_attn(norm_x, seq_lens, grid_sizes, freqs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Wan2.2/wan/modules/s2v/model_s2v.py", line 164, in forward
+    q, k, v = qkv_fn(x)
+              ^^^^^^^^^
+  File "/workspace/Wan2.2/wan/modules/s2v/model_s2v.py", line 159, in qkv_fn
+    q = self.norm_q(self.q(x)).view(b, s, n, d)
+                    ^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1751, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1762, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/linear.py", line 125, in forward
+    return F.linear(input, self.weight, self.bias)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: mat1 and mat2 must have the same dtype, but got Float and BFloat16
+
+---
+[2026-04-24 10:44:51]
+<ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/wan/modules/s2v/model_s2v.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
+please apply
