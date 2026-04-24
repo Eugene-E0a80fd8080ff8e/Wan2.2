@@ -26,6 +26,23 @@ def _to_numpy(t: torch.Tensor) -> np.ndarray:
     return t.detach().cpu().numpy()
 
 
+def _ortvalue_from_torch(ort, t: torch.Tensor):
+    """Build an OrtValue from a torch tensor, preserving dtype (incl. bf16).
+
+    ORT 1.25's Python `OrtValue` class doesn't expose `from_dlpack`, but the
+    underlying C-level type (`_pybind_state.OrtValue`) does. Try a few paths.
+    """
+    from torch.utils.dlpack import to_dlpack
+    dl = to_dlpack(t.contiguous())
+    if hasattr(ort.OrtValue, "from_dlpack"):
+        return ort.OrtValue.from_dlpack(dl, False)
+    if hasattr(ort, "from_dlpack"):
+        return ort.from_dlpack(dl)
+    from onnxruntime.capi import _pybind_state as C
+    c_val = C.OrtValue.from_dlpack(dl, False)
+    return ort.OrtValue(c_val)
+
+
 def run_pytorch(args, snap, dtype, device):
     print(f"[validate] loading pytorch model from {args.ckpt}")
     from wan.modules.s2v.model_s2v import WanModel_S2V
@@ -89,7 +106,7 @@ def run_onnx(args, snap):
         if not isinstance(v, torch.Tensor):
             raise RuntimeError(f"snap[{name}] is {type(v)}, expected Tensor")
         t = v.to(device).contiguous()
-        ov = ort.OrtValue.from_dlpack(to_dlpack(t), False)
+        ov = _ortvalue_from_torch(ort, t)
         io.bind_ortvalue_input(name, ov)
 
     out_name = sess.get_outputs()[0].name

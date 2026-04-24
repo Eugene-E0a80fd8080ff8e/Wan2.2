@@ -782,3 +782,47 @@ Traceback (most recent call last):
     return self._sess.run(output_names, input_feed, run_options)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 onnxruntime.capi.onnxruntime_pybind11_state.InvalidArgument: [ONNXRuntimeError] : 2 : INVALID_ARGUMENT : Unexpected input data type. Actual: (tensor(float)) , expected: (tensor(bfloat16))
+
+---
+[2026-04-24 11:08:14]
+...
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/validate_stem.py", line 136, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/validate_stem.py", line 131, in main
+    onnx_out = run_onnx(args, snap)
+               ^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Wan2.2/trt_conv/validate_stem.py", line 91, in run_onnx
+    outs = sess.run(out_names, feed)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 321, in run
+    return self._sess.run(output_names, input_feed, run_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+onnxruntime.capi.onnxruntime_pybind11_state.InvalidArgument: [ONNXRuntimeError] : 2 : INVALID_ARGUMENT : Unexpected input data type. Actual: (tensor(float)) , expected: (tensor(bfloat16))
+
+---
+[2026-04-24 11:14:56]
+<ide_selection>The user selected the lines 71 to 71 from /home/eugene/prj26/videogen1/Wan2.2/trt_conv/validate_stem.py:
+dlpa
+
+This may or may not be related to the current task.</ide_selection>
+...
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/validate_stem.py", line 143, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/validate_stem.py", line 138, in main
+    onnx_out = run_onnx(args, snap)
+               ^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Wan2.2/trt_conv/validate_stem.py", line 92, in run_onnx
+    ov = ort.OrtValue.from_dlpack(to_dlpack(t), False)
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: type object 'OrtValue' has no attribute 'from_dlpack'
+
+---
+[2026-04-24 11:16:40]
+root@C.35504872:/workspace/Wan2.2$ python -c "import onnxruntime; print(onnxruntime.__version__)"
+1.25.0
