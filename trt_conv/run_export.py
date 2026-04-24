@@ -14,8 +14,35 @@ import argparse
 import gc
 
 import torch
+import torch.nn as nn
 
 from trt_conv.export_stem import ALL_POSITIONAL_NAMES, TENSOR_INPUT_NAMES
+
+
+class StemONNXWrapper(nn.Module):
+    """Presents only real tensor inputs to the ONNX tracer.
+
+    seg_idx, original_seq_len are .item()'d inside the block (baked as
+    constants anyway). grid_sizes is a list of tuples and context_lens is
+    None in this capture — both get baked. Keeping them out of the forward
+    signature makes input_names line up cleanly with graph inputs.
+    """
+
+    def __init__(self, stem, seg_idx, original_seq_len, grid_sizes, context_lens):
+        super().__init__()
+        object.__setattr__(self, "stem", stem)
+        self.seg_idx = seg_idx
+        self.original_seq_len = original_seq_len
+        self.grid_sizes = grid_sizes
+        self.context_lens = context_lens
+
+    def forward(self, x, e, seq_lens, freqs, context,
+                merged_audio_emb, audio_emb_global):
+        return self.stem(
+            x, e, self.seg_idx, seq_lens, self.grid_sizes,
+            freqs, context, self.context_lens, self.original_seq_len,
+            merged_audio_emb, audio_emb_global,
+        )
 
 
 def main():
@@ -87,12 +114,24 @@ def main():
         for p in model.audio_injector.parameters():
             p.requires_grad_(False)
 
+    named = dict(zip(ALL_POSITIONAL_NAMES, positional))
+    wrapper = StemONNXWrapper(
+        stem,
+        seg_idx=named["seg_idx"],
+        original_seq_len=named["original_seq_len"],
+        grid_sizes=named["grid_sizes"],
+        context_lens=named["context_lens"],
+    )
+    wrapper.eval()
+    wrapper_inputs = tuple(named[n] for n in TENSOR_INPUT_NAMES)
+
     print(f"[run_export] exporting to {args.onnx} (opset={args.opset})")
+    print(f"[run_export] wrapper tensor inputs: {TENSOR_INPUT_NAMES}")
     with torch.inference_mode(), torch.autocast(
             device_type="cuda", dtype=dtype, enabled=(dtype != torch.float32)):
         torch.onnx.export(
-            stem,
-            positional,
+            wrapper,
+            wrapper_inputs,
             args.onnx,
             input_names=TENSOR_INPUT_NAMES,
             output_names=["out"],

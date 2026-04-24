@@ -723,3 +723,34 @@ RuntimeError: mat1 and mat2 must have the same dtype, but got Float and BFloat16
 [2026-04-24 10:44:51]
 <ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/wan/modules/s2v/model_s2v.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
 please apply
+
+---
+[2026-04-24 10:47:31]
+...
+ckpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]
+Loading checkpoint shards:  25%|██▌       | 1/4 [00:01<00:03,  1.22s/it]
+Loading checkpoint shards:  50%|█████     | 2/4 [00:02<00:02,  1.22s/it]
+Loading checkpoint shards:  75%|███████▌  | 3/4 [00:03<00:01,  1.21s/it]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:03<00:00,  1.15it/s]
+Loading checkpoint shards: 100%|██████████| 4/4 [00:03<00:00,  1.00it/s]
+[0;93m2026-04-24 03:45:42.825482063 [W:onnxruntime:, constant_folding.cc:278 ApplyImpl] Could not find a CPU kernel and hence can't constant fold Sqrt node '/Sqrt_2'[m
+[0;93m2026-04-24 03:45:42.863544554 [W:onnxruntime:, constant_folding.cc:278 ApplyImpl] Could not find a CPU kernel and hence can't constant fold Sqrt node '/Sqrt_7'[m
+[0;93m2026-04-24 03:46:05.831482112 [W:onnxruntime:, constant_folding.cc:278 ApplyImpl] Could not find a CPU kernel and hence can't constant fold Sqrt node '/Sqrt_7'[m
+[0;93m2026-04-24 03:46:05.831561089 [W:onnxruntime:, constant_folding.cc:278 ApplyImpl] Could not find a CPU kernel and hence can't constant fold Sqrt node '/Sqrt_2'[m
+[0;93m2026-04-24 03:46:06.789341827 [W:onnxruntime:, transformer_memcpy.cc:111 ApplyImpl] 91 Memcpy nodes are added to the graph main_graph for CUDAExecutionProvider. It might have negative impact on performance (including unable to run CUDA graph). Set session_options.log_severity_level=1 to see the detail logs before this message.[m
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/validate_stem.py", line 136, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/validate_stem.py", line 131, in main
+    onnx_out = run_onnx(args, snap)
+               ^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Wan2.2/trt_conv/validate_stem.py", line 91, in run_onnx
+    outs = sess.run(out_names, feed)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 317, in run
+    self._validate_input(list(input_feed.keys()))
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 299, in _validate_input
+    raise ValueError(
+ValueError: Required inputs (['onnx::Split_10', 'onnx::MatMul_11', 'onnx::Unsqueeze_12', 'merged_audio_emb.1', 'tensor.5']) are missing from input feed (['x', 'e', 'seq_lens']).

@@ -27,11 +27,9 @@ import torch
 TENSOR_INPUT_NAMES = [
     "x",
     "e",
-    "seg_idx",
     "seq_lens",
     "freqs",
     "context",
-    "original_seq_len",
     "merged_audio_emb",
     "audio_emb_global",
 ]
