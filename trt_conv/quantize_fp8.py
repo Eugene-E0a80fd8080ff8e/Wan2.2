@@ -67,6 +67,9 @@ class _SingleSampleReader:
         self._done = True
         return self._feed
 
+    def get_first(self):
+        return self._feed
+
     def rewind(self):
         self._done = False
 

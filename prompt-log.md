@@ -1300,3 +1300,70 @@ Traceback (most recent call last):
     return self._sess.run(output_names, input_feed, run_options)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 onnxruntime.capi.onnxruntime_pybind11_state.InvalidArgument: [ONNXRuntimeError] : 2 : INVALID_ARGUMENT : Unexpected input data type. Actual: (tensor(float)) , expected: (tensor(bfloat16))
+
+---
+[2026-04-24 14:19:14]
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8.py", line 115, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8.py", line 104, in main
+    quantize(
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py", line 357, in quantize
+    nodes_to_exclude = find_nodes_from_mha_to_exclude(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py", line 778, in find_nodes_from_mha_to_exclude
+    output_map = get_extended_model_outputs(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py", line 636, in get_extended_model_outputs
+    outputs = session.run(extended_model_output_names, inputs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 266, in run
+    return self._sess.run(output_names, input_feed, run_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+onnxruntime.capi.onnxruntime_pybind11_state.InvalidArgument: [ONNXRuntimeError] : 2 : INVALID_ARGUMENT : Unexpected input data type. Actual: (tensor(float)) , expected: (tensor(bfloat16))
+
+---
+[2026-04-24 14:19:50]
+$ sed -n '600,640p' /usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py
+            Path to the original onnx model.
+        extended_model:
+            The onnx model with some intermediate tensors marked as model outputs.
+        use_external_data_format:
+            If not None, this path will be used to store the weights of the quantized model.
+        intermediate_generated_files:
+            List of intermediate generated files that will be deleted after quantization.
+        calibration_data_reader:
+            Calibration data reader for running inference.
+        calibration_eps:
+            Priority order for the execution providers (EP) to calibrate the model.
+            Any subset of ['cuda:x', 'cpu', 'trt'], where 'x' is the device id.
+
+    Returns: a map with each output name pointed to the corresponding output numpy ndarray.
+    """
+    # Get the first calibration input data.
+    inputs = calibration_data_reader.get_first()
+
+    # Initialize ORT session.
+    if use_external_data_format:
+        extended_onnx_path = f"{onnx_path[:-5]}.extended.onnx"
+        extended_model_external_data_path = f"{onnx_path[:-5]}.extended.onnx_data"
+        onnx.save_model(
+            extended_model,
+            extended_onnx_path,
+            save_as_external_data=True,
+            location=os.path.basename(extended_model_external_data_path),
+        )
+        intermediate_generated_files.append(extended_onnx_path)
+        intermediate_generated_files.append(extended_model_external_data_path)
+        session = create_inference_session(extended_onnx_path, calibration_eps)
+    else:
+        session = create_inference_session(extended_model.SerializeToString(), calibration_eps)
+
+    # Run extended model's inference.
+    extended_model_output_names = [output.name for output in session.get_outputs()]
+    outputs = session.run(extended_model_output_names, inputs)
+    output_map = {name: output for name, output in zip(extended_model_output_names, outputs)}
+
+    return output_map
