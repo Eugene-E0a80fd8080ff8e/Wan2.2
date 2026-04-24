@@ -976,3 +976,32 @@ Can we make a custom loader, which would skip stem part from the original weight
 thanks. this works, but this still uses a lot of memory. In fact, the peak memory consumption should be the same
 Can you load only the needed parts ?
 If you need, please you may prepare a different file to load, by picking parts from the current
+
+---
+[2026-04-24 12:25:13]
+<ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/generate_with_trt.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
+good . it works!
+
+I also want to test fp4 trt, if possible.
+lets not overwrite existing tools and files
+
+---
+[2026-04-24 12:30:05]
+> trtexec --onnx=/workspace/s2v_trt/stem.onnx \
+        --saveEngine=/workspace/s2v_trt/stem.fp4.trt \
+        --fp4 --bf16 \
+        --memPoolSize=workspace:8192 \
+        --verbose 2>&1 | tee /workspace/s2v_trt/trt_build_fp4.log
+
+...
+[04/24/2026-05:29:37] [E] Unknown option: --fp4
+
+---
+[2026-04-24 12:33:59]
+root@C.35504872:/workspace/Wan2.2$ python -c "import modelopt.onnx.quantization as q; print(q.__file__)"
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/__init__.py
+root@C.35504872:/workspace/Wan2.2$
+
+---
+[2026-04-24 12:35:34]
+/usr/bin/python: No module named trt_conv.quantize_fp4
