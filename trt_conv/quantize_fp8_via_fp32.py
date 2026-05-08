@@ -183,7 +183,14 @@ def main():
         feed[name] = arr
         print(f"[fp8_via_fp32] {name:22s} {arr.shape} {arr.dtype}")
 
-    from modelopt.onnx.quantization import quantize
+    # Stub out find_nodes_from_mha_to_exclude before importing quantize.
+    # That function runs an ORT session over the full fp32 model with extended
+    # outputs (every per-layer activation kept resident) which OOMs on 96 GB.
+    # Skipping it just means MHA-adjacent nodes get quantized like everything
+    # else — a known-benign tradeoff for this graph.
+    from modelopt.onnx.quantization import quantize as _q_mod
+    _q_mod.find_nodes_from_mha_to_exclude = lambda *a, **kw: []
+    quantize = _q_mod.quantize
 
     print(f"[fp8_via_fp32] quantizing {fp32_onnx} -> {args.out} (FP8)")
     quantize(
