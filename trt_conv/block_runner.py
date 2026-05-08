@@ -16,9 +16,25 @@ from pathlib import Path
 
 import tensorrt as trt
 import torch
+import torch.nn as nn
 
 
 BLOCK_TRT_INPUTS = ["x", "e_tensor", "seq_lens", "freqs", "context"]
+
+
+class _TRTBlockStub(nn.Module):
+    """Stand-in nn.Module with no parameters that delegates to a TRT runner.
+
+    Replaces meta-tensor PyTorch blocks so .to(device) walks find nothing to
+    move on this block.
+    """
+
+    def __init__(self, runner):
+        super().__init__()
+        object.__setattr__(self, "_runner", runner)
+
+    def forward(self, *args, **kwargs):
+        return self._runner.forward(*args, **kwargs)
 
 
 def _smi(tag):
@@ -161,12 +177,13 @@ def install_block_runners(model, engines_dir, device="cuda:0"):
     shared_ptr = shared.data_ptr()
     _smi("after shared scratch alloc")
 
-    # Pass 2: build runners that all reuse the shared buffer.
+    # Pass 2: build runners that all reuse the shared buffer, and replace each
+    # PyTorch block with a parameter-free stub so `.to(device)` ignores them.
     runners = []
     n_replaced = 0
-    for i, blk in enumerate(model.blocks):
+    for i in range(n_blocks):
         if i not in engines:
-            print(f"[block_runners] block {i:2d}: no engine; keeping PyTorch forward")
+            print(f"[block_runners] block {i:2d}: no engine; keeping PyTorch block")
             continue
         runner = BlockTRTRunner.__new__(BlockTRTRunner)
         runner.device = dev
@@ -185,7 +202,7 @@ def install_block_runners(model, engines_dir, device="cuda:0"):
                 f"engine block_{i:02d} missing inputs: {missing}; "
                 f"has {runner.input_names}")
         runners.append(runner)
-        blk.forward = runner.forward
+        model.blocks[i] = _TRTBlockStub(runner)
         n_replaced += 1
 
     # Hold the shared buffer alive on the first runner so it doesn't get GC'd.

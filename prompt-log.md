@@ -2010,3 +2010,49 @@ RuntimeError: failed to deserialize engine at /workspace/s2v_trt/blocks/block_28
 nvidia-smi after loading WanModel_S2V
 nvidia-smi before and after loading the first trt block
 nvidia-smi before and after loading the tenth trt block
+
+---
+[2026-05-08 20:48:10]
+[smi] after WanModel_S2V load: 9558/97887 MiB (10% util)                                                                                                          [0/1901]
+[smi] before loading first TRT block: 9558/97887 MiB (0% util)
+[smi] after loading first TRT block: 10232/97887 MiB (14% util)
+[smi] after loading tenth TRT block: 16280/97887 MiB (6% util)
+[block_runners] max engine scratch = 2.88 GB; allocating one shared buffer
+[smi] after shared scratch alloc: 39126/97887 MiB (14% util)
+[smi] after all engines loaded: 39214/97887 MiB (2% util)
+[block_runners] replaced 40/40 block forwards with TRT engines
+[diag] stem type: S2VBlockStem
+[diag] stem forward id after install: 140579015892416
+[diag] stem forward qualname: S2VBlockStem.forward
+Traceback (most recent call last):
+  File "/workspace/Wan2.2/generate_with_trt_blocks.py", line 32, in <module>
+    runpy.run_module("generate_with_hook", run_name="__main__")
+  File "<frozen runpy>", line 229, in run_module
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/generate_with_hook.py", line 582, in <module>
+    generate(args)
+  File "/workspace/Wan2.2/generate_with_hook.py", line 503, in generate
+    video = wan_s2v.generate(
+            ^^^^^^^^^^^^^^^^^
+  File "/workspace/Wan2.2/wan/speech2video.py", line 734, in generate
+    self.noise_model.to(self.device)
+  File "/usr/local/lib/python3.12/dist-packages/diffusers/models/modeling_utils.py", line 1528, in to
+    return super().to(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1355, in to
+    return self._apply(convert)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 915, in _apply
+    module._apply(fn)
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 915, in _apply
+    module._apply(fn)
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 915, in _apply
+    module._apply(fn)
+  [Previous line repeated 1 more time]
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 942, in _apply
+    param_applied = fn(param)
+                    ^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1348, in convert
+    raise NotImplementedError(
+NotImplementedError: Cannot copy out of meta tensor; no data! Please use torch.nn.Module.to_empty() instead of torch.nn.Module.to() when moving module from meta to a diff
+erent device.
