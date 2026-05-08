@@ -1779,3 +1779,32 @@ TypeError: modelopt.onnx.quantization.fp8.quantize() got multiple values for key
 
 ---
 By the way, I have significantly increased the size of storage available, so we don't have to try to squeeze everything into memory. Let's keep it simple.
+
+---
+[2026-05-08 16:58:31]
+<ide_selection>The user selected the lines 165 to 165 from /home/eugene/prj26/videogen1/Wan2.2/trt_conv/quantize_fp8_via_fp32.py:
+name
+
+This may or may not be related to the current task.</ide_selection>
+again:
+
+OSError: [Errno 28] No space left on device
+
+---
+
+why do I have 3 new copies of 59g onnx_data ??
+
+$ ls -lh /workspace/s2v_trt/*.onnx_data /workspace/workdir/*.onnx.data
+-rw-r--r-- 1 root root 60G May  8 09:34 /workspace/s2v_trt/stem.fp32_named.extended.onnx_data
+-rw-r--r-- 1 root root 60G May  8 09:32 /workspace/s2v_trt/stem.fp32_named.onnx_data
+-rw-r--r-- 1 root root 60G May  8 09:29 /workspace/workdir/stem.fp32.onnx.data
+
+what does trt_conv.quantize_fp8_via_fp32 actually does ?
+
+---
+[2026-05-08 17:05:55]
+<ide_selection>The user selected the lines 154 to 154 from /home/eugene/prj26/videogen1/Wan2.2/trt_conv/quantize_fp8_via_fp32.py:
+str(fp32_onnx)
+
+This may or may not be related to the current task.</ide_selection>
+modify quantize_fp8_via_fp32.py so it would not recreate str(fp32_onnx) if it is already exists

@@ -136,29 +136,34 @@ def main():
     workdir.mkdir(parents=True, exist_ok=True)
     fp32_onnx = workdir / "stem.fp32.onnx"
     fp32_data = "stem.fp32.onnx.data"
+    fp32_data_path = workdir / fp32_data
 
-    print(f"[fp8_via_fp32] loading {args.onnx} (with external data)")
-    model = onnx.load(args.onnx, load_external_data=True)
+    if fp32_onnx.exists() and fp32_data_path.exists():
+        print(f"[fp8_via_fp32] reusing existing fp32 staging {fp32_onnx} "
+              f"(+ {fp32_data_path.stat().st_size / 1e9:.1f} GB sidecar)")
+    else:
+        print(f"[fp8_via_fp32] loading {args.onnx} (with external data)")
+        model = onnx.load(args.onnx, load_external_data=True)
 
-    print(f"[fp8_via_fp32] converting bf16 -> fp32 in memory")
-    n_changed = _convert_graph_bf16_to_fp32(model.graph)
-    print(f"[fp8_via_fp32] converted {n_changed} bf16 entities")
+        print(f"[fp8_via_fp32] converting bf16 -> fp32 in memory")
+        n_changed = _convert_graph_bf16_to_fp32(model.graph)
+        print(f"[fp8_via_fp32] converted {n_changed} bf16 entities")
 
-    print(f"[fp8_via_fp32] hoisting Constant nodes to graph initializers")
-    n_hoisted = _hoist_constants_to_initializers(model.graph)
-    print(f"[fp8_via_fp32] hoisted {n_hoisted} Constant nodes")
+        print(f"[fp8_via_fp32] hoisting Constant nodes to graph initializers")
+        n_hoisted = _hoist_constants_to_initializers(model.graph)
+        print(f"[fp8_via_fp32] hoisted {n_hoisted} Constant nodes")
 
-    print(f"[fp8_via_fp32] writing fp32 staging onnx to {fp32_onnx}")
-    onnx.save(
-        model,
-        str(fp32_onnx),
-        save_as_external_data=True,
-        all_tensors_to_one_file=True,
-        location=fp32_data,
-        size_threshold=1024,
-    )
-    del model
-    gc.collect()
+        print(f"[fp8_via_fp32] writing fp32 staging onnx to {fp32_onnx}")
+        onnx.save(
+            model,
+            str(fp32_onnx),
+            save_as_external_data=True,
+            all_tensors_to_one_file=True,
+            location=fp32_data,
+            size_threshold=1024,
+        )
+        del model
+        gc.collect()
 
     print(f"[fp8_via_fp32] building calibration feed from {args.inputs}")
     snap = torch.load(args.inputs, map_location="cpu", weights_only=False)
