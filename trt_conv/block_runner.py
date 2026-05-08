@@ -133,7 +133,8 @@ class BlockTRTRunner:
         return outs
 
 
-def install_block_runners(model, engines_dir, device="cuda:0"):
+def install_block_runners(model, engines_dir, device="cuda:0",
+                          engine_suffix=".trt"):
     """Replace each model.blocks[i].forward with a BlockTRTRunner.
 
     Skips any block whose engine file is missing — those keep PyTorch forward,
@@ -155,7 +156,7 @@ def install_block_runners(model, engines_dir, device="cuda:0"):
     engines = {}
     max_scratch = 0
     for i, blk in enumerate(model.blocks):
-        engine_path = engines_dir / f"block_{i:02d}.trt"
+        engine_path = engines_dir / f"block_{i:02d}{engine_suffix}"
         if not engine_path.exists():
             continue
         if i == 0:

@@ -2169,3 +2169,9 @@ onnxruntime.capi.onnxruntime_pybind11_state.RuntimeException: [ONNXRuntimeError]
 [2026-05-08 21:22:27]
 do I need to keep files like block_XX.fp32_named.onnx_data  ?? those are quite big
 I can see that files block_XX.fp32_named.onnx are being deleted
+
+---
+[2026-05-08 22:31:47]
+Okay, it has finished. 
+
+How do I run fp8 inference?
