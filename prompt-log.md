@@ -1734,3 +1734,48 @@ Traceback (most recent call last):
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 onnxruntime.capi.onnxruntime_pybind11_state.InvalidProtobuf: [ONNXRuntimeError] : 7 : INVALID_PROTOBUF : Load model from /workspace/workdir/stem.fp32.extended.onnx failed:Protobuf parsing failed.
 root@C.36327693:/workspace/Wan2.2$
+
+---
+[2026-05-08 14:56:15]
+root@C.36327693:/workspace/Wan2.2$ sh trt_quantize_fp8.sh 
+[fp8_via_fp32] loading /workspace/s2v_trt/stem.onnx (with external data)
+[fp8_via_fp32] converting bf16 -> fp32 in memory
+...
+
+What exactly do we convert bf16 -> fp32 , if stem.onnx is float32 ?
+
+---
+[2026-05-08 14:56:54]
+then why stem.onnx is 63 gigs ?
+
+---
+[2026-05-08 14:57:18]
+53
+
+---
+[2026-05-08 16:21:44]
+...
+[fp8_via_fp32] quantizing /workspace/workdir/stem.fp32.onnx -> /workspace/s2v_trt/stem.fp8.onnx (FP8)
+[05/08/2026-08:59:39] [TRT] [W] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+WARNING:root:No custom ops found. If that's not correct, please make sure that the 'tensorrt' python package is correctly installed and that the paths to 'libcudnn*.so' and TensorRT 'lib/' are in 'LD_LIBRARY_PATH'. If the custom op is not directly available as a plugin in TensorRT, please also make sure that the path to the compiled '.so' TensorRT plugin is also being given via the  '--trt_plugins' flag (requires TRT 10+).
+INFO:root:Model /workspace/workdir/stem.fp32.onnx with opset_version 17 is loaded.
+INFO:root:Model is cloned to /workspace/s2v_trt/stem.fp32_named.onnx after naming the nodes.
+INFO:root:libcudnn_adv*.so* is accessible in /usr/lib/x86_64-linux-gnu/libcudnn_adv.so! Please check that this is the correct version needed for your ORT version at https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements.
+INFO:root:Successfully imported the `tensorrt` python package with version 10.10.0.31.
+INFO:root:libcudnn_adv*.so* is accessible in /usr/lib/x86_64-linux-gnu/libcudnn_adv.so! Please check that this is the correct version needed for your ORT version at https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements.
+INFO:root:Successfully enabled 3 EPs for ORT: ['CPUExecutionProvider', ('CUDAExecutionProvider', {'device_id': 0}), 'TensorrtExecutionProvider']
+2026-05-08 09:03:50.954027191 [W:onnxruntime:Default, tensorrt_execution_provider.h:90 log] [2026-05-08 09:03:50 WARNING] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8_via_fp32.py", line 223, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8_via_fp32.py", line 204, in main
+    quantize(
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py", line 372, in quantize
+    onnx_model = quantize_func(
+                 ^^^^^^^^^^^^^^
+TypeError: modelopt.onnx.quantization.fp8.quantize() got multiple values for keyword argument 'calibration_data_reader'
+
+---
+By the way, I have significantly increased the size of storage available, so we don't have to try to squeeze everything into memory. Let's keep it simple.

@@ -123,24 +123,6 @@ def _tensor_to_fp32_numpy(t: torch.Tensor) -> np.ndarray:
     return t.detach().cpu().numpy()
 
 
-class _SingleSampleReader:
-    def __init__(self, feed):
-        self._feed = feed
-        self._done = False
-
-    def get_next(self):
-        if self._done:
-            return None
-        self._done = True
-        return self._feed
-
-    def get_first(self):
-        return self._feed
-
-    def rewind(self):
-        self._done = False
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--onnx", required=True, help="input bf16 stem.onnx")
@@ -196,15 +178,13 @@ def main():
         feed[name] = arr
         print(f"[fp8_via_fp32] {name:22s} {arr.shape} {arr.dtype}")
 
-    reader = _SingleSampleReader(feed)
-
     from modelopt.onnx.quantization import quantize
 
     print(f"[fp8_via_fp32] quantizing {fp32_onnx} -> {args.out} (FP8)")
     quantize(
         onnx_path=str(fp32_onnx),
         quantize_mode="fp8",
-        calibration_data_reader=reader,
+        calibration_data=feed,
         calibration_method="max",
         output_path=args.out,
         use_external_data_format=True,
