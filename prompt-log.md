@@ -1818,3 +1818,11 @@ does it even uses gpu ?
 | 30%   44C    P8             14W /  300W |     564MiB /  97887MiB |      0%      Default |
 |                                         |                        |                  N/A |
 +-----------------------------------------+------------------------+----------------------+
+
+---
+[2026-05-08 17:21:06]
+<ide_selection>The user selected the lines 186 to 186 from /home/eugene/prj26/videogen1/Wan2.2/trt_conv/quantize_fp8_via_fp32.py:
+modelopt.onnx.quantization import quantize
+
+This may or may not be related to the current task.</ide_selection>
+please make use of calibrate_per_node=True

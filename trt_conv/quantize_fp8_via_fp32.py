@@ -194,6 +194,7 @@ def main():
         calibration_eps=["cuda:0", "cpu"],
         output_path=args.out,
         use_external_data_format=True,
+        calibrate_per_node=True,
     )
     print(f"[fp8_via_fp32] wrote {args.out}")
 
