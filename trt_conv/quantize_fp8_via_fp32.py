@@ -191,6 +191,7 @@ def main():
         quantize_mode="fp8",
         calibration_data=feed,
         calibration_method="max",
+        calibration_eps=["cuda:0", "cpu"],
         output_path=args.out,
         use_external_data_format=True,
     )

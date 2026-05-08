@@ -1808,3 +1808,13 @@ str(fp32_onnx)
 
 This may or may not be related to the current task.</ide_selection>
 modify quantize_fp8_via_fp32.py so it would not recreate str(fp32_onnx) if it is already exists
+
+---
+[2026-05-08 17:10:18]
+<ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/trt_conv/quantize_fp8_via_fp32.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
+does it even uses gpu ?
+
+|   0  NVIDIA RTX PRO 6000 Blac...    On  |   00000000:41:00.0 Off |                  Off |
+| 30%   44C    P8             14W /  300W |     564MiB /  97887MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
