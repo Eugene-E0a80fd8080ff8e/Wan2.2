@@ -2164,3 +2164,8 @@ Traceback (most recent call last):
     return self._sess.run(output_names, input_feed, run_options)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 onnxruntime.capi.onnxruntime_pybind11_state.RuntimeException: [ONNXRuntimeError] : 6 : RUNTIME_EXCEPTION : Non-zero status code returned while running Cast node. Name:'/Cast_18' Status Message: /onnxruntime_src/onnxruntime/core/framework/bfc_arena.cc:376 void* onnxruntime::BFCArena::AllocateRawInternal(size_t, bool, onnxruntime::Stream*, bool, onnxruntime::WaitNotificationFn) Failed to allocate memory for requested buffer of size 43370127360
+
+---
+[2026-05-08 21:22:27]
+do I need to keep files like block_XX.fp32_named.onnx_data  ?? those are quite big
+I can see that files block_XX.fp32_named.onnx are being deleted

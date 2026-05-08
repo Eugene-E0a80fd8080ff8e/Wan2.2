@@ -35,6 +35,14 @@ for onnx in "$BLOCKS_DIR"/block_[0-9][0-9].onnx; do
         echo "[phase3_fp8] $base: fp8 onnx exists, reusing"
     fi
 
+    echo "[phase3_fp8] $base: cleaning up staging artifacts"
+    rm -f "$WORKDIR/$base.fp32.onnx" \
+          "$WORKDIR/$base.fp32.onnx.data" \
+          "$BLOCKS_DIR/$base.fp32_named.onnx" \
+          "$BLOCKS_DIR/$base.fp32_named.onnx_data" \
+          "$BLOCKS_DIR/$base.fp32_named.extended.onnx" \
+          "$BLOCKS_DIR/$base.fp32_named.extended.onnx_data"
+
     echo "[phase3_fp8] $base: building fp8 engine"
     trtexec --onnx="$fp8_onnx" \
             --saveEngine="$fp8_engine" \
