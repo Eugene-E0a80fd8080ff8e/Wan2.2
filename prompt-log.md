@@ -2056,3 +2056,11 @@ Traceback (most recent call last):
     raise NotImplementedError(
 NotImplementedError: Cannot copy out of meta tensor; no data! Please use torch.nn.Module.to_empty() instead of torch.nn.Module.to() when moving module from meta to a diff
 erent device.
+
+---
+[2026-05-08 21:01:02]
+good!
+it works!
+thank you!
+
+now lets move on -- please make trt_blocks_phase3_fp8.sh
