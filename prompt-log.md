@@ -1940,3 +1940,29 @@ looks good
 ---
 [2026-05-08 20:32:10]
 1-3 finished cleanly
+
+---
+[2026-05-08 20:38:04]
+[2026-05-08 13:36:40,988] INFO: Creating WanS2V pipeline.
+[2026-05-08 13:36:40,988] INFO: Creating WanModel from ./Wan2.2-S2V-14B/
+Loading checkpoint shards: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████| 4/4 [00:05<00:00,  1.44s/it]
+[05/08/2026-13:36:54] [TRT] [E] [defaultAllocator.cpp::allocateAsync::69] Error Code 1: Cuda Runtime (out of memory)
+[05/08/2026-13:36:54] [TRT] [W] Requested amount of GPU memory (702941056 bytes) could not be allocated. There may not be enough free memory for allocation to succeed.
+[05/08/2026-13:36:54] [TRT] [E] [engine.cpp::readEngineFromArchive::1138] Error Code 2: OutOfMemory (Requested size was 702941056 bytes.)
+Traceback (most recent call last):
+  File "/workspace/Wan2.2/generate_with_trt_blocks.py", line 28, in <module>
+    runpy.run_module("generate_with_hook", run_name="__main__")
+  File "<frozen runpy>", line 229, in run_module
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/generate_with_hook.py", line 582, in <module>
+    generate(args)
+  File "/workspace/Wan2.2/generate_with_hook.py", line 497, in generate
+    install_export_hook(wan_s2v.noise_model, onnx_path="/workspace/s2v_trt/stem.onnx")
+  File "/workspace/Wan2.2/generate_with_trt_blocks.py", line 18, in _install_trt_block_runners
+    runners = install_block_runners(
+              ^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Wan2.2/trt_conv/block_runner.py", line 113, in install_block_runners
+    runner = BlockTRTRunner(str(engine_path), device=device)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Wan2.2/trt_conv/block_runner.py", line 26, in __init__
+    raise RuntimeError(f"failed to deserialize engine at {engine_path}")
