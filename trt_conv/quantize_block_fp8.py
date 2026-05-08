@@ -1,8 +1,9 @@
 """
-FP8 quantization for ONE per-block ONNX, via in-memory bf16 -> fp16 staging.
+FP8 quantization for ONE per-block ONNX, via in-memory bf16 -> fp32 staging.
 
-Same trick as quantize_fp8_via_fp32.py but scoped to a single block, so the
-ORT calibration session stays small enough to fit easily on 96 GB.
+Same trick as quantize_fp8_via_fp32.py but scoped to a single block. fp32
+(rather than fp16) keeps numerics stable — per-block calibration only needs
+~45 GB peak which fits comfortably on a 96 GB card.
 
 Usage:
     python -m trt_conv.quantize_block_fp8 \\
@@ -16,18 +17,72 @@ import gc
 import importlib
 from pathlib import Path
 
+import ml_dtypes
+import numpy as np
 import onnx
 import torch
 
-from trt_conv.quantize_fp8_via_fp32 import (
-    _convert_graph_bf16_to_fp16,
-    _hoist_constants_to_initializers,
-    _tensor_to_graph_numpy,
-)
+from trt_conv.quantize_fp8_via_fp32 import _hoist_constants_to_initializers
 
 
 # Block ONNX inputs (from export_blocks.py BLOCK_TENSOR_INPUT_NAMES)
 BLOCK_TENSOR_INPUT_NAMES = ["x", "e_tensor", "seq_lens", "freqs", "context"]
+
+
+def _convert_tensor_bf16_to_fp32(tp: onnx.TensorProto) -> None:
+    if tp.data_type != onnx.TensorProto.BFLOAT16:
+        return
+    if tp.raw_data:
+        arr_bf16 = np.frombuffer(tp.raw_data, dtype=ml_dtypes.bfloat16)
+        tp.raw_data = arr_bf16.astype(np.float32).tobytes()
+    elif len(tp.int32_data) > 0:
+        arr_u16 = np.array(tp.int32_data, dtype=np.uint32).astype(np.uint16)
+        arr_bf16 = arr_u16.view(ml_dtypes.bfloat16)
+        del tp.int32_data[:]
+        tp.raw_data = arr_bf16.astype(np.float32).tobytes()
+    tp.data_type = onnx.TensorProto.FLOAT
+
+
+def _convert_graph_bf16_to_fp32(g: onnx.GraphProto) -> int:
+    n = 0
+    for init in g.initializer:
+        if init.data_type == onnx.TensorProto.BFLOAT16:
+            _convert_tensor_bf16_to_fp32(init)
+            n += 1
+    for vi in list(g.input) + list(g.output) + list(g.value_info):
+        if vi.type.tensor_type.elem_type == onnx.TensorProto.BFLOAT16:
+            vi.type.tensor_type.elem_type = onnx.TensorProto.FLOAT
+            n += 1
+    for node in g.node:
+        if node.op_type == "Cast":
+            for attr in node.attribute:
+                if attr.name == "to" and attr.i == onnx.TensorProto.BFLOAT16:
+                    attr.i = onnx.TensorProto.FLOAT
+                    n += 1
+        elif node.op_type == "Constant":
+            for attr in node.attribute:
+                if attr.name == "value" and attr.t.data_type == onnx.TensorProto.BFLOAT16:
+                    _convert_tensor_bf16_to_fp32(attr.t)
+                    n += 1
+        for attr in node.attribute:
+            if attr.type == onnx.AttributeProto.GRAPH:
+                n += _convert_graph_bf16_to_fp32(attr.g)
+            elif attr.type == onnx.AttributeProto.GRAPHS:
+                for sg in attr.graphs:
+                    n += _convert_graph_bf16_to_fp32(sg)
+    return n
+
+
+def _tensor_to_numpy(t: torch.Tensor, graph_dtype: int) -> np.ndarray:
+    if graph_dtype == onnx.TensorProto.FLOAT:
+        return t.detach().cpu().to(torch.float32).numpy()
+    if graph_dtype == onnx.TensorProto.FLOAT16:
+        return t.detach().cpu().to(torch.float16).numpy()
+    if graph_dtype == onnx.TensorProto.INT64:
+        return t.detach().cpu().to(torch.int64).numpy()
+    if t.dtype == torch.bfloat16:
+        t = t.float()
+    return t.detach().cpu().numpy()
 
 
 def _build_feed(snap, graph_dtypes):
@@ -48,7 +103,7 @@ def _build_feed(snap, graph_dtypes):
         v = sources[name]
         if not isinstance(v, torch.Tensor):
             raise RuntimeError(f"snapshot {name} is not a Tensor: {type(v).__name__}")
-        feed[name] = _tensor_to_graph_numpy(v, graph_dtypes.get(name, onnx.TensorProto.FLOAT))
+        feed[name] = _tensor_to_numpy(v, graph_dtypes.get(name, onnx.TensorProto.FLOAT))
     return feed
 
 
@@ -66,31 +121,31 @@ def main():
     workdir.mkdir(parents=True, exist_ok=True)
 
     stem = onnx_path.stem  # e.g. "block_05"
-    fp16_onnx = workdir / f"{stem}.fp16.onnx"
-    fp16_data = f"{stem}.fp16.onnx.data"
-    fp16_data_path = workdir / fp16_data
+    fp32_onnx = workdir / f"{stem}.fp32.onnx"
+    fp32_data = f"{stem}.fp32.onnx.data"
+    fp32_data_path = workdir / fp32_data
 
-    if fp16_onnx.exists() and fp16_data_path.exists():
-        print(f"[block_fp8] reusing existing fp16 staging {fp16_onnx}")
+    if fp32_onnx.exists() and fp32_data_path.exists():
+        print(f"[block_fp8] reusing existing fp32 staging {fp32_onnx}")
     else:
         print(f"[block_fp8] loading {onnx_path}")
         model = onnx.load(str(onnx_path), load_external_data=True)
 
-        print(f"[block_fp8] converting bf16 -> fp16 in memory")
-        n = _convert_graph_bf16_to_fp16(model.graph)
+        print(f"[block_fp8] converting bf16 -> fp32 in memory")
+        n = _convert_graph_bf16_to_fp32(model.graph)
         print(f"[block_fp8] converted {n} bf16 entities")
 
         print(f"[block_fp8] hoisting Constant nodes to initializers")
         n = _hoist_constants_to_initializers(model.graph)
         print(f"[block_fp8] hoisted {n} Constant nodes")
 
-        print(f"[block_fp8] writing fp16 staging onnx to {fp16_onnx}")
+        print(f"[block_fp8] writing fp32 staging onnx to {fp32_onnx}")
         onnx.save(
             model,
-            str(fp16_onnx),
+            str(fp32_onnx),
             save_as_external_data=True,
             all_tensors_to_one_file=True,
-            location=fp16_data,
+            location=fp32_data,
             size_threshold=1024,
         )
         del model
@@ -98,7 +153,7 @@ def main():
 
     print(f"[block_fp8] building calibration feed from {args.inputs}")
     snap = torch.load(args.inputs, map_location="cpu", weights_only=False)
-    staging_meta = onnx.load(str(fp16_onnx), load_external_data=False)
+    staging_meta = onnx.load(str(fp32_onnx), load_external_data=False)
     graph_dtypes = {
         inp.name: inp.type.tensor_type.elem_type for inp in staging_meta.graph.input
     }
@@ -107,24 +162,23 @@ def main():
     for name, arr in feed.items():
         print(f"[block_fp8] {name:12s} {arr.shape} {arr.dtype}")
 
-    # Stub out MHA-exclusion analysis: it runs the full block as one ORT session
-    # capturing every per-layer activation, which can OOM. Skipping has the same
-    # benign trade-off we made for the stem — MHA-adjacent ops get quantized
-    # like everything else.
+    # Stub out MHA-exclusion analysis: it runs the block as one ORT session
+    # capturing every per-layer activation, which can be heavy. Skipping has
+    # the same benign trade-off we made for the stem — MHA-adjacent ops get
+    # quantized like everything else.
     _q_mod = importlib.import_module("modelopt.onnx.quantization.quantize")
     _q_mod.find_nodes_from_mha_to_exclude = lambda *a, **kw: []
     quantize = _q_mod.quantize
 
     print(f"[block_fp8] quantizing -> {args.out} (FP8)")
     quantize(
-        onnx_path=str(fp16_onnx),
+        onnx_path=str(fp32_onnx),
         quantize_mode="fp8",
         calibration_data=feed,
         calibration_method="max",
         calibration_eps=["cuda:0", "cpu"],
         output_path=args.out,
         use_external_data_format=True,
-        calibrate_per_node=True,
     )
     print(f"[block_fp8] wrote {args.out}")
 

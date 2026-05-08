@@ -2064,3 +2064,38 @@ it works!
 thank you!
 
 now lets move on -- please make trt_blocks_phase3_fp8.sh
+
+---
+[2026-05-08 21:09:01]
+$ sh trt_blocks_phase3_fp8.sh 
+[phase3_fp8] block_00: quantizing to fp8 onnx
+[block_fp8] loading /workspace/s2v_trt/blocks/block_00.onnx
+[block_fp8] converting bf16 -> fp16 in memory
+[block_fp8] converted 44 bf16 entities
+[block_fp8] hoisting Constant nodes to initializers
+[block_fp8] hoisted 241 Constant nodes
+[block_fp8] writing fp16 staging onnx to /workspace/workdir/block_00.fp16.onnx
+[block_fp8] building calibration feed from /workspace/s2v_trt/blocks/block_00.pt
+[block_fp8] x            (1, 16464, 5120) float16
+[block_fp8] e_tensor     (1, 6, 2, 5120) float32
+[block_fp8] seq_lens     (1,) int64
+[block_fp8] freqs        (1, 16464, 40, 64, 2) float32
+[block_fp8] context      (1, 512, 5120) float16
+[block_fp8] quantizing -> /workspace/s2v_trt/blocks/block_00.fp8.onnx (FP8)
+[05/08/2026-14:07:38] [TRT] [W] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+WARNING:root:No custom ops found. If that's not correct, please make sure that the 'tensorrt' python package is correctly installed and that the paths to 'libcudnn*.so' and TensorRT 'lib/' are in 'LD_LIBRARY_PATH'. If the custom op is not directly available as a plugin in TensorRT, please also make sure that the path to the compiled '.so' TensorRT plugin is also being given via the  '--trt_plugins' flag (requires TRT 10+).
+INFO:root:Model /workspace/workdir/block_00.fp16.onnx with opset_version 17 is loaded.
+INFO:root:Model is cloned to /workspace/s2v_trt/blocks/block_00.fp16_named.onnx after naming the nodes.
+INFO:root:Quantization Mode: fp8
+INFO:root:libcudnn_adv*.so* is accessible in /usr/lib/x86_64-linux-gnu/libcudnn_adv.so! Please check that this is the correct version needed for your ORT version at https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements.
+INFO:root:Successfully enabled 2 EPs for ORT: [('CUDAExecutionProvider', {'device_id': 0}), 'CPUExecutionProvider']
+INFO:root:Quantizable op types in the model: ['MatMul']
+INFO:root:Total number of nodes: 383
+WARNING:root:Please consider to run pre-processing before quantization. Refer to example: https://github.com/microsoft/onnxruntime-inference-examples/blob/main/quantization/image_classification/cpu/ReadMe.md 
+2026-05-08 14:07:41.455872410 [W:onnxruntime:, transformer_memcpy.cc:74 ApplyImpl] 90 Memcpy nodes are added to the graph main_graph for CUDAExecutionProvider. It might have negative impact on performance (including unable to run CUDA graph). Set session_options.log_severity_level=1 to see the detail logs before this message.
+2026-05-08 14:08:16.752166832 [E:onnxruntime:, sequential_executor.cc:516 ExecuteKernel] Non-zero status code returned while running Where node. Name:'/Where' Status Message: CUDA error cudaErrorIllegalAddress:an illegal memory access was encountered
+terminate called after throwing an instance of 'onnxruntime::OnnxRuntimeException'
+  what():  /onnxruntime_src/onnxruntime/core/providers/cuda/cuda_call.cc:129 std::conditional_t<THRW, void, onnxruntime::common::Status> onnxruntime::CudaCall(ERRTYPE, const char*, const char*, SUCCTYPE, const char*, const char*, int) [with ERRTYPE = cudaError; bool THRW = true; SUCCTYPE = cudaError; std::conditional_t<THRW, void, common::Status> = void] /onnxruntime_src/onnxruntime/core/providers/cuda/cuda_call.cc:121 std::conditional_t<THRW, void, onnxruntime::common::Status> onnxruntime::CudaCall(ERRTYPE, const char*, const char*, SUCCTYPE, const char*, const char*, int) [with ERRTYPE = cudaError; bool THRW = true; SUCCTYPE = cudaError; std::conditional_t<THRW, void, common::Status> = void] CUDA failure 700: an illegal memory access was encountered ; GPU=0 ; hostname=f1a1c05469bd ; file=/onnxruntime_src/onnxruntime/core/providers/cuda/cuda_stream_handle.cc ; line=36 ; expr=cudaEventDestroy(event_); 
+
+
+Aborted
