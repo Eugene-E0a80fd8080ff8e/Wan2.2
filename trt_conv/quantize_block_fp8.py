@@ -14,7 +14,6 @@ Usage:
 """
 import argparse
 import gc
-import importlib
 from pathlib import Path
 
 import ml_dtypes
@@ -162,13 +161,12 @@ def main():
     for name, arr in feed.items():
         print(f"[block_fp8] {name:12s} {arr.shape} {arr.dtype}")
 
-    # Stub out MHA-exclusion analysis: it runs the block as one ORT session
-    # capturing every per-layer activation, which can be heavy. Skipping has
-    # the same benign trade-off we made for the stem — MHA-adjacent ops get
-    # quantized like everything else.
-    _q_mod = importlib.import_module("modelopt.onnx.quantization.quantize")
-    _q_mod.find_nodes_from_mha_to_exclude = lambda *a, **kw: []
-    quantize = _q_mod.quantize
+    # MHA exclusion analysis is enabled — per-block scope is small enough to
+    # fit, and TRT EP (in calibration_eps below) gives it flash attention so
+    # the seq×seq×heads buffer never materializes. The exclusion keeps ops
+    # adjacent to attention (softmax inputs, etc.) at higher precision, which
+    # FP8 quantization quality depends on.
+    from modelopt.onnx.quantization import quantize
 
     print(f"[block_fp8] quantizing -> {args.out} (FP8)")
     quantize(

@@ -2175,3 +2175,21 @@ I can see that files block_XX.fp32_named.onnx are being deleted
 Okay, it has finished. 
 
 How do I run fp8 inference?
+
+---
+[2026-05-08 22:56:37]
+<ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/trt_conv/quantize_block_fp8.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
+The FP8 generation is not very good quality. 
+What could be the reason? 
+
+Should we make more calibration data? Maybe different calibration method?
+
+---
+[2026-05-08 22:59:27]
+what is MHA , and why did we exluded it ?
+
+---
+[2026-05-08 23:01:54]
+Well, I believe right now the scope of this problem is limited to just a single transformer, right? So we can just return it. 
+
+If so, please return it back.
