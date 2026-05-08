@@ -28,25 +28,25 @@ import onnx
 import torch
 
 
-def _convert_tensor_bf16_to_fp32(tp: onnx.TensorProto) -> None:
+def _convert_tensor_bf16_to_fp16(tp: onnx.TensorProto) -> None:
     if tp.data_type != onnx.TensorProto.BFLOAT16:
         return
     if tp.raw_data:
         arr_bf16 = np.frombuffer(tp.raw_data, dtype=ml_dtypes.bfloat16)
-        arr_fp32 = arr_bf16.astype(np.float32)
-        tp.raw_data = arr_fp32.tobytes()
+        arr_fp16 = arr_bf16.astype(np.float16)
+        tp.raw_data = arr_fp16.tobytes()
     elif len(tp.int32_data) > 0:
         arr_u16 = np.array(tp.int32_data, dtype=np.uint32).astype(np.uint16)
         arr_bf16 = arr_u16.view(ml_dtypes.bfloat16)
-        arr_fp32 = arr_bf16.astype(np.float32)
+        arr_fp16 = arr_bf16.astype(np.float16)
         del tp.int32_data[:]
-        tp.raw_data = arr_fp32.tobytes()
-    tp.data_type = onnx.TensorProto.FLOAT
+        tp.raw_data = arr_fp16.tobytes()
+    tp.data_type = onnx.TensorProto.FLOAT16
 
 
-def _convert_value_info_bf16_to_fp32(vi: onnx.ValueInfoProto) -> None:
+def _convert_value_info_bf16_to_fp16(vi: onnx.ValueInfoProto) -> None:
     if vi.type.tensor_type.elem_type == onnx.TensorProto.BFLOAT16:
-        vi.type.tensor_type.elem_type = onnx.TensorProto.FLOAT
+        vi.type.tensor_type.elem_type = onnx.TensorProto.FLOAT16
 
 
 def _hoist_constants_to_initializers(g: onnx.GraphProto) -> int:
@@ -87,38 +87,45 @@ def _hoist_constants_to_initializers(g: onnx.GraphProto) -> int:
     return n_hoisted
 
 
-def _convert_graph_bf16_to_fp32(g: onnx.GraphProto) -> int:
+def _convert_graph_bf16_to_fp16(g: onnx.GraphProto) -> int:
     n_changed = 0
     for init in g.initializer:
         if init.data_type == onnx.TensorProto.BFLOAT16:
-            _convert_tensor_bf16_to_fp32(init)
+            _convert_tensor_bf16_to_fp16(init)
             n_changed += 1
     for vi in list(g.input) + list(g.output) + list(g.value_info):
         if vi.type.tensor_type.elem_type == onnx.TensorProto.BFLOAT16:
-            _convert_value_info_bf16_to_fp32(vi)
+            _convert_value_info_bf16_to_fp16(vi)
             n_changed += 1
     for node in g.node:
         if node.op_type == "Cast":
             for attr in node.attribute:
                 if attr.name == "to" and attr.i == onnx.TensorProto.BFLOAT16:
-                    attr.i = onnx.TensorProto.FLOAT
+                    attr.i = onnx.TensorProto.FLOAT16
                     n_changed += 1
         elif node.op_type == "Constant":
             for attr in node.attribute:
                 if attr.name == "value" and attr.t.data_type == onnx.TensorProto.BFLOAT16:
-                    _convert_tensor_bf16_to_fp32(attr.t)
+                    _convert_tensor_bf16_to_fp16(attr.t)
                     n_changed += 1
         for attr in node.attribute:
             if attr.type == onnx.AttributeProto.GRAPH:
-                n_changed += _convert_graph_bf16_to_fp32(attr.g)
+                n_changed += _convert_graph_bf16_to_fp16(attr.g)
             elif attr.type == onnx.AttributeProto.GRAPHS:
                 for sg in attr.graphs:
-                    n_changed += _convert_graph_bf16_to_fp32(sg)
+                    n_changed += _convert_graph_bf16_to_fp16(sg)
     return n_changed
 
 
-def _tensor_to_fp32_numpy(t: torch.Tensor) -> np.ndarray:
-    if t.dtype in (torch.bfloat16, torch.float16):
+def _tensor_to_graph_numpy(t: torch.Tensor, graph_dtype: int) -> np.ndarray:
+    """Convert a torch tensor to numpy with a dtype matching the ONNX graph input."""
+    if graph_dtype == onnx.TensorProto.FLOAT16:
+        return t.detach().cpu().to(torch.float16).numpy()
+    if graph_dtype == onnx.TensorProto.FLOAT:
+        return t.detach().cpu().to(torch.float32).numpy()
+    if graph_dtype == onnx.TensorProto.INT64:
+        return t.detach().cpu().to(torch.int64).numpy()
+    if t.dtype == torch.bfloat16:
         t = t.float()
     return t.detach().cpu().numpy()
 
@@ -139,21 +146,21 @@ def main():
     fp32_data_path = workdir / fp32_data
 
     if fp32_onnx.exists() and fp32_data_path.exists():
-        print(f"[fp8_via_fp32] reusing existing fp32 staging {fp32_onnx} "
+        print(f"[fp8_via_fp32] reusing existing fp16 staging {fp32_onnx} "
               f"(+ {fp32_data_path.stat().st_size / 1e9:.1f} GB sidecar)")
     else:
         print(f"[fp8_via_fp32] loading {args.onnx} (with external data)")
         model = onnx.load(args.onnx, load_external_data=True)
 
-        print(f"[fp8_via_fp32] converting bf16 -> fp32 in memory")
-        n_changed = _convert_graph_bf16_to_fp32(model.graph)
+        print(f"[fp8_via_fp32] converting bf16 -> fp16 in memory")
+        n_changed = _convert_graph_bf16_to_fp16(model.graph)
         print(f"[fp8_via_fp32] converted {n_changed} bf16 entities")
 
         print(f"[fp8_via_fp32] hoisting Constant nodes to graph initializers")
         n_hoisted = _hoist_constants_to_initializers(model.graph)
         print(f"[fp8_via_fp32] hoisted {n_hoisted} Constant nodes")
 
-        print(f"[fp8_via_fp32] writing fp32 staging onnx to {fp32_onnx}")
+        print(f"[fp8_via_fp32] writing fp16 staging onnx to {fp32_onnx}")
         onnx.save(
             model,
             str(fp32_onnx),
@@ -171,15 +178,17 @@ def main():
         "x", "e", "seq_lens", "freqs", "context",
         "merged_audio_emb", "audio_emb_global",
     ]
+    staging_meta = onnx.load(str(fp32_onnx), load_external_data=False)
+    graph_dtypes = {
+        inp.name: inp.type.tensor_type.elem_type for inp in staging_meta.graph.input
+    }
+    del staging_meta
     feed = {}
     for name in tensor_input_names:
         v = snap[name]
         if not isinstance(v, torch.Tensor):
             continue
-        if v.dtype == torch.int64:
-            arr = v.detach().cpu().numpy()
-        else:
-            arr = _tensor_to_fp32_numpy(v)
+        arr = _tensor_to_graph_numpy(v, graph_dtypes.get(name, onnx.TensorProto.FLOAT))
         feed[name] = arr
         print(f"[fp8_via_fp32] {name:22s} {arr.shape} {arr.dtype}")
 
@@ -188,7 +197,8 @@ def main():
     # outputs (every per-layer activation kept resident) which OOMs on 96 GB.
     # Skipping it just means MHA-adjacent nodes get quantized like everything
     # else — a known-benign tradeoff for this graph.
-    import modelopt.onnx.quantization.quantize as _q_mod
+    import importlib
+    _q_mod = importlib.import_module("modelopt.onnx.quantization.quantize")
     _q_mod.find_nodes_from_mha_to_exclude = lambda *a, **kw: []
     quantize = _q_mod.quantize
 

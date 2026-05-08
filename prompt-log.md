@@ -1866,3 +1866,44 @@ Traceback (most recent call last):
     quantize = _q_mod.quantize
                ^^^^^^^^^^^^^^^
 AttributeError: 'function' object has no attribute 'quantize'
+
+---
+[2026-05-08 17:46:10]
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8_via_fp32.py", line 217, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8_via_fp32.py", line 193, in main
+    quantize = _q_mod.quantize
+               ^^^^^^^^^^^^^^^
+AttributeError: 'function' object has no attribute 'quantize'
+
+---
+[2026-05-08 18:04:38]
+<ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/trt_conv/quantize_fp8_via_fp32.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
+WARNING:root:Please consider to run pre-processing before quantization. Refer to example: https://github.com/microsoft/onnxruntime-inference-examples/blob/main/quantization/image_classification/cpu/ReadMe.md 
+2026-05-08 11:03:29.902407039 [W:onnxruntime:, transformer_memcpy.cc:74 ApplyImpl] 3908 Memcpy nodes are added to the graph main_graph for CUDAExecutionProvider. It might have negative impact on performance (including unable to run CUDA graph). Set session_options.log_severity_level=1 to see the detail logs before this message.
+2026-05-08 11:03:49.203406493 [E:onnxruntime:, sequential_executor.cc:516 ExecuteKernel] Non-zero status code returned while running MatMul node. Name:'/MatMul_3' Status Message: /onnxruntime_src/onnxruntime/core/framework/bfc_arena.cc:376 void* onnxruntime::BFCArena::AllocateRawInternal(size_t, bool, onnxruntime::Stream*, bool, onnxruntime::WaitNotificationFn) Failed to allocate memory for requested buffer of size 43370127360
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8_via_fp32.py", line 218, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8_via_fp32.py", line 197, in main
+    quantize(
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py", line 372, in quantize
+    onnx_model = quantize_func(
+                 ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/fp8.py", line 282, in quantize
+    quantize_static(
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py", line 730, in _quantize_static
+    calibrator.collect_data(calibration_data_reader)
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py", line 405, in _collect_data_minmax_calibrator
+    calibrator.intermediate_outputs.append(calibrator.infer_session.run(None, inputs))
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 266, in run
+    return self._sess.run(output_names, input_feed, run_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+onnxruntime.capi.onnxruntime_pybind11_state.RuntimeException: [ONNXRuntimeError] : 6 : RUNTIME_EXCEPTION : Non-zero status code returned while running MatMul node. Name:'/MatMul_3' Status Message: /onnxruntime_src/onnxruntime/core/framework/bfc_arena.cc:376 void* onnxruntime::BFCArena::AllocateRawInternal(size_t, bool, onnxruntime::Stream*, bool, onnxruntime::WaitNotificationFn) Failed to allocate memory for requested buffer of size 43370127360
