@@ -176,7 +176,10 @@ def main():
         quantize_mode="fp8",
         calibration_data=feed,
         calibration_method="max",
-        calibration_eps=["cuda:0", "cpu"],
+        # TRT EP first: it has flash attention so the seq×seq×heads attention
+        # buffer is never materialized (CUDA EP needs ~43 GB for it, blowing
+        # the GPU). Falls back to CUDA/CPU for any unsupported ops.
+        calibration_eps=["trt", "cuda:0", "cpu"],
         output_path=args.out,
         use_external_data_format=True,
     )
