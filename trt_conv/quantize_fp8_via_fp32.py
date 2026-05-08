@@ -165,6 +165,7 @@ def main():
         calibration_data_reader=reader,
         calibration_method="max",
         output_path=args.out,
+        use_external_data_format=True,
     )
     print(f"[fp8_via_fp32] wrote {args.out}")
 

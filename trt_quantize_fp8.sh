@@ -4,10 +4,12 @@
 
 set -e
 
+export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+
 mkdir -p /workspace/s2v_trt
 
 PYTHONPATH=/workspace/Wan2.2 python -m trt_conv.quantize_fp8_via_fp32 \
     --onnx /workspace/s2v_trt/stem.onnx \
     --inputs /workspace/s2v_trt/stem.onnx.inputs.pt \
     --out /workspace/s2v_trt/stem.fp8.onnx \
-    --workdir /dev/shm
+    --workdir /workspace/workdir

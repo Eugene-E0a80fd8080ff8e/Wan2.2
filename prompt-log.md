@@ -1544,3 +1544,156 @@ What do you think about this plan?
 [2026-05-08 13:07:58]
 please do quantize_fp8_via_fp32.py
 (and make .sh starter script)
+
+---
+[2026-05-08 13:31:39]
+root@C.36327693:/workspace/Wan2.2$ sh trt_quantize_fp8.sh 
+[fp8_via_fp32] loading /workspace/s2v_trt/stem.onnx (with external data)
+[fp8_via_fp32] converting bf16 -> fp32 in memory
+[fp8_via_fp32] converted 1871 bf16 entities
+[fp8_via_fp32] writing fp32 staging onnx to /dev/shm/stem.fp32.onnx
+[fp8_via_fp32] building calibration feed from /workspace/s2v_trt/stem.onnx.inputs.pt
+[fp8_via_fp32] x                      (1, 16464, 5120) float32
+[fp8_via_fp32] e                      (1, 6, 2, 5120) float32
+[fp8_via_fp32] seq_lens               (1,) int64
+[fp8_via_fp32] freqs                  (1, 16464, 40, 64, 2) float32
+[fp8_via_fp32] context                (1, 512, 5120) float32
+[fp8_via_fp32] merged_audio_emb       (1, 20, 5, 5120) float32
+[fp8_via_fp32] audio_emb_global       (1, 20, 1, 5120) float32
+[fp8_via_fp32] quantizing /dev/shm/stem.fp32.onnx -> /workspace/s2v_trt/stem.fp8.onnx (FP8)
+WARNING:root:No custom ops found. If that's not correct, please make sure that the 'tensorrt' python package is correctly installed and that the paths to 'libcudnn*.so' and TensorRT 'lib/' are in 'LD_LIBRARY_PATH'. If the custom op is not directly available as a plugin in TensorRT, please also make sure that the path to the compiled '.so' TensorRT plugin is also being given via the  '--trt_plugins' flag (requires TRT 10+).
+INFO:root:Model /dev/shm/stem.fp32.onnx with opset_version 17 is loaded.
+WARNING:root:Failed to enable ORT with CUDA EP: 'libcudnn_adv*.so* is not accessible in LD_LIBRARY_PATH! Please make sure that the path to that library is in the env var to use the CUDA or TensorRT EP and ensure that the correct version is available. Versioning compatibility can be checked at https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements.'
+INFO:root:Successfully imported the `tensorrt` python package with version 10.10.0.31.
+WARNING:root:Failed to enable ORT with TensorRT EP: 'libcudnn_adv*.so* is not accessible in LD_LIBRARY_PATH! Please make sure that the path to that library is in the env var to use the CUDA or TensorRT EP and ensure that the correct version is available. Versioning compatibility can be checked at https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements.'
+INFO:root:Successfully enabled 1 EPs for ORT: ['CPUExecutionProvider']
+Killed
+root@C.36327693:/workspace/Wan2.2$ 
+
+was it oom ?  where to look at ?
+
+---
+[2026-05-08 13:36:18]
+root@C.36327693:/workspace/Wan2.2$ ls /workspace/s2v_trt/ | head
+Constant_10715_attr__value
+Constant_10716_attr__value
+Constant_11563_attr__value
+Constant_11564_attr__value
+Constant_12174_attr__value
+Constant_12175_attr__value
+Constant_12785_attr__value
+Constant_12786_attr__value
+Constant_13396_attr__value
+Constant_13397_attr__value
+root@C.36327693:/workspace/Wan2.2$
+
+do we still need all that Constant_ files , if we already have onnx ?
+
+---
+[2026-05-08 13:49:38]
+...
+[fp8_via_fp32] merged_audio_emb       (1, 20, 5, 5120) float32                                                                                                            
+[fp8_via_fp32] audio_emb_global       (1, 20, 1, 5120) float32                                                                                                            
+[fp8_via_fp32] quantizing /workspace/workdir/stem.fp32.onnx -> /workspace/s2v_trt/stem.fp8.onnx (FP8)                                                                     
+WARNING:root:No custom ops found. If that's not correct, please make sure that the 'tensorrt' python package is correctly installed and that the paths to 'libcudnn*.so' a
+nd TensorRT 'lib/' are in 'LD_LIBRARY_PATH'. If the custom op is not directly available as a plugin in TensorRT, please also make sure that the path to the compiled '.so'
+ TensorRT plugin is also being given via the  '--trt_plugins' flag (requires TRT 10+).                                                                                    
+INFO:root:Model /workspace/workdir/stem.fp32.onnx with opset_version 17 is loaded.                                                                                        
+INFO:root:libcudnn_adv*.so* is accessible in /usr/lib/x86_64-linux-gnu/libcudnn_adv.so! Please check that this is the correct version needed for your ORT version at https
+://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements.                                                                                      
+INFO:root:Successfully imported the `tensorrt` python package with version 10.10.0.31.                                                                                    
+INFO:root:libcudnn_adv*.so* is accessible in /usr/lib/x86_64-linux-gnu/libcudnn_adv.so! Please check that this is the correct version needed for your ORT version at https
+://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements.                                                                                      
+INFO:root:Successfully enabled 3 EPs for ORT: ['CPUExecutionProvider', ('CUDAExecutionProvider', {'device_id': 0}), 'TensorrtExecutionProvider']
+*************** EP Error ***************
+EP Error narrowing_error when using ['CPUExecutionProvider', ('CUDAExecutionProvider', {'device_id': 0}), 'TensorrtExecutionProvider']
+Falling back to ['CUDAExecutionProvider', 'CPUExecutionProvider'] and retrying.
+****************************************
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 465, in __init__
+    self._create_inference_session(providers, provider_options, disabled_optimizers)
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 528, in _create_inference_session
+    sess = C.InferenceSession(session_options, self._model_bytes, False, self._read_config_from_model)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: narrowing_error
+
+---
+[2026-05-08 13:53:41]
+> The standard workaround is to keep weights in external data files
+
+Let's go the standard way. How do we do this?
+
+---
+[2026-05-08 13:59:10]
+for grep : 
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/__main__.py:109:        "--use_external_data_format",
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/__main__.py:235:        use_external_data_format=args.use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/fp8.py:201:    use_external_data_format: bool = True,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/fp8.py:219:    onnx_model = onnx.load(onnx_path, load_external_data=use_external_data_format)
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/fp8.py:290:        use_external_data_format=use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/fp8.py:294:    if use_external_data_format:
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py:588:    use_external_data_format: bool,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py:603:        use_external_data_format:
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py:619:    if use_external_data_format:
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py:625:            save_as_external_data=True,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py:632:        session = create_inference_session(extended_model.SerializeToString(), calibration_eps)
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py:644:    use_external_data_format: bool = False,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py:659:        use_external_data_format:
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py:674:    model = onnx.load(onnx_path, load_external_data=use_external_data_format)
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py:695:        use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py:718:    use_external_data_format: bool = False,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py:738:        use_external_data_format:
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py:759:    model = onnx.load(onnx_path, load_external_data=use_external_data_format)
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py:781:            use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/int4.py:421:    use_external_data_format: bool,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/int4.py:453:    save_onnx(augmented_model, augmented_onnx_path, use_external_data_format)
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/int4.py:546:        if use_external_data_format:
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/int4.py:902:    use_external_data_format: bool,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/int4.py:954:    save_onnx(augmented_model, augmented_onnx_path, use_external_data_format)
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/int4.py:1204:        if use_external_data_format:
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/int4.py:1217:    use_external_data_format: bool = True,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/int4.py:1243:        use_external_data_format: If True, save tensors to external file(s) for quantized model.
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/int4.py:1283:        onnx_model = onnx.load(onnx_path, load_external_data=use_external_data_format)
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/int4.py:1305:            use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/int4.py:1317:            use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/int8.py:126:    use_external_data_format: bool = True,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/int8.py:142:    onnx_model = onnx.load(onnx_path, load_external_data=use_external_data_format)
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/int8.py:197:            use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/int8.py:242:        use_external_data_format=use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/int8.py:252:    if use_external_data_format:
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py:264:    """Create an ORT InferenceSession."""
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py:293:    calibrator.infer_session = ort.InferenceSession(
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py:559:    use_external_data_format=False,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py:574:            use_external_data_format=use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py:589:            use_external_data_format=use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py:603:            use_external_data_format=use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py:618:            use_external_data_format=use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py:645:    use_external_data_format=False,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py:716:                save_as_external_data=True,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py:727:            use_external_data_format=use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py:770:    quantizer.model.save_model_to_file(model_output, use_external_data_format)
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_utils.py:167:    """Create an ORT InferenceSession."""
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_utils.py:170:    return ort.InferenceSession(
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py:73:    use_external_data_format: bool,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py:90:        use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py:95:        save_onnx(onnx_model, onnx_path, use_external_data_format)
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py:123:        save_onnx(onnx_model, onnx_path, use_external_data_format)
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py:142:                save_onnx(onnx_model, onnx_path, use_external_data_format)
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py:169:        save_onnx(onnx_model, onnx_path, use_external_data_format)
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py:204:    use_external_data_format: bool = False,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py:250:        use_external_data_format:
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py:331:        use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py:359:        use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py:383:            use_external_data_format=use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py:398:            use_external_data_format=use_external_data_format,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py:416:        save_onnx(onnx_model, output_path, use_external_data_format)
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/trt_utils.py:127:    use_external_data_format: bool = False,
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/trt_utils.py:136:        use_external_data_format: If True, separate data path will be used to store the weights of the quantized model.
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/trt_utils.py:149:    onnx_model = onnx.load(onnx_path, load_external_data=use_external_data_format)
+/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/trt_utils.py:173:                onnx_model, onnx_path_static_shapes, save_as_external_data=use_external_data_format
+
+
+---
+
+$ python -c "import inspect; from modelopt.onnx.quantization import quantize; print(inspect.signature(quantize))"
+(onnx_path: str, quantize_mode: str = 'int8', calibration_data: Union[numpy.ndarray, dict[str, numpy.ndarray]] = None, calibration_method: str = None, calibration_cache_path: str = None, calibration_shapes: str = None, calibration_eps: list[str] = ['cpu', 'cuda:0', 'trt'], op_types_to_quantize: list[str] = None, op_types_to_exclude: list[str] = None, nodes_to_quantize: list[str] = None, nodes_to_exclude: list[str] = None, use_external_data_format: bool = False, keep_intermediate_files: bool = False, output_path: str = None, verbose: bool = False, trt_plugins: str = None, trt_plugins_precision: list[str] = None, high_precision_dtype: str = None, mha_accumulation_dtype: str = 'fp16', disable_mha_qdq: bool = False, dq_only: bool = True, block_size: Optional[int] = None, use_zero_point: bool = False, passes: list[str] = None, simplify: bool = False, **kwargs: Any) -> None
