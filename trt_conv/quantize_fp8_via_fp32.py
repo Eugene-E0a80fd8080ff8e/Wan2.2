@@ -49,6 +49,44 @@ def _convert_value_info_bf16_to_fp32(vi: onnx.ValueInfoProto) -> None:
         vi.type.tensor_type.elem_type = onnx.TensorProto.FLOAT
 
 
+def _hoist_constants_to_initializers(g: onnx.GraphProto) -> int:
+    """Move Constant nodes with a `value` tensor attr into graph.initializer.
+
+    ModelOpt's save_as_external_data only externalizes initializers (not
+    Constant op `value` attributes), so leaving them as Constant nodes makes
+    the proto exceed the 2 GB wire-format limit when the model has many large
+    Constants. Hoisting them to initializers lets ModelOpt externalize them.
+    """
+    n_hoisted = 0
+    keep_nodes = []
+    new_inits = []
+    for node in g.node:
+        if node.op_type == "Constant" and len(node.output) == 1:
+            value_tp = None
+            for attr in node.attribute:
+                if attr.name == "value":
+                    value_tp = attr.t
+                    break
+            if value_tp is not None:
+                init = onnx.TensorProto()
+                init.CopyFrom(value_tp)
+                init.name = node.output[0]
+                new_inits.append(init)
+                n_hoisted += 1
+                continue
+        keep_nodes.append(node)
+        for attr in node.attribute:
+            if attr.type == onnx.AttributeProto.GRAPH:
+                n_hoisted += _hoist_constants_to_initializers(attr.g)
+            elif attr.type == onnx.AttributeProto.GRAPHS:
+                for sg in attr.graphs:
+                    n_hoisted += _hoist_constants_to_initializers(sg)
+    del g.node[:]
+    g.node.extend(keep_nodes)
+    g.initializer.extend(new_inits)
+    return n_hoisted
+
+
 def _convert_graph_bf16_to_fp32(g: onnx.GraphProto) -> int:
     n_changed = 0
     for init in g.initializer:
@@ -123,6 +161,10 @@ def main():
     print(f"[fp8_via_fp32] converting bf16 -> fp32 in memory")
     n_changed = _convert_graph_bf16_to_fp32(model.graph)
     print(f"[fp8_via_fp32] converted {n_changed} bf16 entities")
+
+    print(f"[fp8_via_fp32] hoisting Constant nodes to graph initializers")
+    n_hoisted = _hoist_constants_to_initializers(model.graph)
+    print(f"[fp8_via_fp32] hoisted {n_hoisted} Constant nodes")
 
     print(f"[fp8_via_fp32] writing fp32 staging onnx to {fp32_onnx}")
     onnx.save(

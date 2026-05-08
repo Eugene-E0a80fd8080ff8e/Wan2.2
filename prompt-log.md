@@ -1697,3 +1697,40 @@ for grep :
 
 $ python -c "import inspect; from modelopt.onnx.quantization import quantize; print(inspect.signature(quantize))"
 (onnx_path: str, quantize_mode: str = 'int8', calibration_data: Union[numpy.ndarray, dict[str, numpy.ndarray]] = None, calibration_method: str = None, calibration_cache_path: str = None, calibration_shapes: str = None, calibration_eps: list[str] = ['cpu', 'cuda:0', 'trt'], op_types_to_quantize: list[str] = None, op_types_to_exclude: list[str] = None, nodes_to_quantize: list[str] = None, nodes_to_exclude: list[str] = None, use_external_data_format: bool = False, keep_intermediate_files: bool = False, output_path: str = None, verbose: bool = False, trt_plugins: str = None, trt_plugins_precision: list[str] = None, high_precision_dtype: str = None, mha_accumulation_dtype: str = 'fp16', disable_mha_qdq: bool = False, dq_only: bool = True, block_size: Optional[int] = None, use_zero_point: bool = False, passes: list[str] = None, simplify: bool = False, **kwargs: Any) -> None
+
+---
+[2026-05-08 14:21:14]
+> WARNING:root:No custom ops found. If that's not correct, please make sure that the 'tensorrt' python package is correctly installed and that the paths to 'libcudnn*.so' and TensorRT 'lib/' are in 'LD_LIBRARY_PATH'. If the custom op is not directly available as a plugin in TensorRT, please also make sure that the path to the compiled '.so' TensorRT plugin is also being given via the  '--trt_plugins' flag (requires TRT 10+).
+
+
+btw, where is TensorRT's lib/   ?
+
+---
+[2026-05-08 14:50:03]
+INFO:root:Successfully enabled 3 EPs for ORT: ['CPUExecutionProvider', ('CUDAExecutionProvider', {'device_id': 0}), 'TensorrtExecutionProvider']
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8_via_fp32.py", line 181, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8_via_fp32.py", line 162, in main
+    quantize(
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py", line 357, in quantize
+    nodes_to_exclude = find_nodes_from_mha_to_exclude(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py", line 778, in find_nodes_from_mha_to_exclude
+    output_map = get_extended_model_outputs(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py", line 630, in get_extended_model_outputs
+    session = create_inference_session(extended_onnx_path, calibration_eps)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_utils.py", line 170, in create_inference_session
+    return ort.InferenceSession(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 465, in __init__
+    self._create_inference_session(providers, provider_options, disabled_optimizers)
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 526, in _create_inference_session
+    sess = C.InferenceSession(session_options, self._model_path, True, self._read_config_from_model)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+onnxruntime.capi.onnxruntime_pybind11_state.InvalidProtobuf: [ONNXRuntimeError] : 7 : INVALID_PROTOBUF : Load model from /workspace/workdir/stem.fp32.extended.onnx failed:Protobuf parsing failed.
+root@C.36327693:/workspace/Wan2.2$
