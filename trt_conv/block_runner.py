@@ -5,7 +5,13 @@ for the matching engine.
 The audio_injector stays in PyTorch — only the transformer blocks are
 delegated to TRT. Block engines accept (x, e_tensor, seq_lens, freqs, context)
 and return out.
+
+Memory: each block engine needs ~3 GB of "device memory" (per-context
+activation scratch). With 40 blocks that's >100 GB, blowing the GPU. We
+allocate ONE buffer sized to max(engine.device_memory_size) and have every
+context point at it — sequential execution means there's no aliasing risk.
 """
+import subprocess
 from pathlib import Path
 
 import tensorrt as trt
@@ -15,8 +21,22 @@ import torch
 BLOCK_TRT_INPUTS = ["x", "e_tensor", "seq_lens", "freqs", "context"]
 
 
+def _smi(tag):
+    """Print a one-line nvidia-smi summary (mem used / total, util)."""
+    try:
+        out = subprocess.check_output(
+            ["nvidia-smi", "--query-gpu=memory.used,memory.total,utilization.gpu",
+             "--format=csv,noheader,nounits"],
+            text=True).strip().splitlines()[0]
+        used, total, util = [s.strip() for s in out.split(",")]
+        print(f"[smi] {tag}: {used}/{total} MiB ({util}% util)")
+    except Exception as e:
+        print(f"[smi] {tag}: nvidia-smi failed: {e}")
+
+
 class BlockTRTRunner:
-    def __init__(self, engine_path: str, device: str = "cuda:0"):
+    def __init__(self, engine_path: str, device: str = "cuda:0",
+                 shared_device_memory_ptr: int = 0):
         self.device = torch.device(device)
         logger = trt.Logger(trt.Logger.WARNING)
         runtime = trt.Runtime(logger)
@@ -24,7 +44,11 @@ class BlockTRTRunner:
             self.engine = runtime.deserialize_cuda_engine(f.read())
         if self.engine is None:
             raise RuntimeError(f"failed to deserialize engine at {engine_path}")
-        self.context = self.engine.create_execution_context()
+        if shared_device_memory_ptr:
+            self.context = self.engine.create_execution_context_without_device_memory()
+            self.context.device_memory = shared_device_memory_ptr
+        else:
+            self.context = self.engine.create_execution_context()
 
         self.io_names = [self.engine.get_tensor_name(i)
                          for i in range(self.engine.num_io_tensors)]
@@ -98,23 +122,77 @@ def install_block_runners(model, engines_dir, device="cuda:0"):
 
     Skips any block whose engine file is missing — those keep PyTorch forward,
     so a partial conversion still produces a working model.
+
+    All runners share one device-memory buffer to avoid OOM; sized to
+    max(engine.device_memory_size_v2). Sequential execution makes sharing safe.
     """
     engines_dir = Path(engines_dir)
     n_blocks = len(model.blocks)
-    runners = []
-    n_replaced = 0
+    dev = torch.device(device)
 
+    _smi("after WanModel_S2V load")
+
+    # Pass 1: deserialize engines (without contexts) and find the max scratch
+    # size needed. Engines themselves still take VRAM (~700 MB each).
+    logger = trt.Logger(trt.Logger.WARNING)
+    runtime = trt.Runtime(logger)
+    engines = {}
+    max_scratch = 0
     for i, blk in enumerate(model.blocks):
         engine_path = engines_dir / f"block_{i:02d}.trt"
         if not engine_path.exists():
-            print(f"[block_runners] block {i:2d}: no engine ({engine_path}); "
-                  f"keeping PyTorch forward")
             continue
-        runner = BlockTRTRunner(str(engine_path), device=device)
+        if i == 0:
+            _smi("before loading first TRT block")
+        with open(engine_path, "rb") as f:
+            eng = runtime.deserialize_cuda_engine(f.read())
+        if eng is None:
+            raise RuntimeError(f"failed to deserialize {engine_path}")
+        engines[i] = eng
+        max_scratch = max(max_scratch, eng.device_memory_size_v2)
+        if i == 0:
+            _smi("after loading first TRT block")
+        if i == 9:
+            _smi("after loading tenth TRT block")
+
+    print(f"[block_runners] max engine scratch = {max_scratch / 1e9:.2f} GB; "
+          f"allocating one shared buffer")
+    shared = torch.empty(max_scratch, dtype=torch.uint8, device=dev)
+    shared_ptr = shared.data_ptr()
+    _smi("after shared scratch alloc")
+
+    # Pass 2: build runners that all reuse the shared buffer.
+    runners = []
+    n_replaced = 0
+    for i, blk in enumerate(model.blocks):
+        if i not in engines:
+            print(f"[block_runners] block {i:2d}: no engine; keeping PyTorch forward")
+            continue
+        runner = BlockTRTRunner.__new__(BlockTRTRunner)
+        runner.device = dev
+        runner.engine = engines[i]
+        runner.context = engines[i].create_execution_context_without_device_memory()
+        runner.context.device_memory = shared_ptr
+        runner.io_names = [runner.engine.get_tensor_name(j)
+                           for j in range(runner.engine.num_io_tensors)]
+        runner.input_names = [n for n in runner.io_names
+                              if runner.engine.get_tensor_mode(n) == trt.TensorIOMode.INPUT]
+        runner.output_names = [n for n in runner.io_names
+                               if runner.engine.get_tensor_mode(n) == trt.TensorIOMode.OUTPUT]
+        missing = [n for n in BLOCK_TRT_INPUTS if n not in runner.input_names]
+        if missing:
+            raise RuntimeError(
+                f"engine block_{i:02d} missing inputs: {missing}; "
+                f"has {runner.input_names}")
         runners.append(runner)
         blk.forward = runner.forward
         n_replaced += 1
 
+    # Hold the shared buffer alive on the first runner so it doesn't get GC'd.
+    if runners:
+        runners[0]._shared_scratch = shared
+
+    _smi("after all engines loaded")
     print(f"[block_runners] replaced {n_replaced}/{n_blocks} block forwards "
           f"with TRT engines")
     return runners

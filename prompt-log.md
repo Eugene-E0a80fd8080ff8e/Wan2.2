@@ -1966,3 +1966,47 @@ Traceback (most recent call last):
              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/workspace/Wan2.2/trt_conv/block_runner.py", line 26, in __init__
     raise RuntimeError(f"failed to deserialize engine at {engine_path}")
+
+---
+[2026-05-08 20:43:49]
+/workspace/Wan2.2/wan/modules/s2v/model_s2v.py:74: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  @amp.autocast(enabled=False)
+[no_blocks] building model structure on meta device
+[no_blocks] 4 shard(s); loading non-block tensors
+[no_blocks] loaded 180 tensors, skipped 1080 block tensors
+[no_blocks] GPU mem after load: 9.5/102.0 GB used
+[05/08/2026-13:40:13] [TRT] [E] [defaultAllocator.cpp::allocate::53] Error Code 1: Cuda Runtime (out of memory)
+[05/08/2026-13:40:13] [TRT] [W] Requested amount of GPU memory (2882185728 bytes) could not be allocated. There may not be enough free memory for allocation to succeed.
+[05/08/2026-13:40:13] [TRT] [E] [executionContext.cpp::ExecutionContext::624] Error Code 2: OutOfMemory (Requested size was 2882185728 bytes.)
+[05/08/2026-13:40:14] [TRT] [E] [defaultAllocator.cpp::allocate::53] Error Code 1: Cuda Runtime (out of memory)
+[05/08/2026-13:40:14] [TRT] [W] Requested amount of GPU memory (2882185728 bytes) could not be allocated. There may not be enough free memory for allocation to succeed.
+[05/08/2026-13:40:14] [TRT] [E] [executionContext.cpp::ExecutionContext::624] Error Code 2: OutOfMemory (Requested size was 2882185728 bytes.)
+[05/08/2026-13:40:14] [TRT] [E] [defaultAllocator.cpp::allocate::53] Error Code 1: Cuda Runtime (out of memory)
+[05/08/2026-13:40:14] [TRT] [W] Requested amount of GPU memory (2882185728 bytes) could not be allocated. There may not be enough free memory for allocation to succeed.
+[05/08/2026-13:40:14] [TRT] [E] [executionContext.cpp::ExecutionContext::624] Error Code 2: OutOfMemory (Requested size was 2882185728 bytes.)
+[05/08/2026-13:40:14] [TRT] [E] [defaultAllocator.cpp::allocateAsync::69] Error Code 1: Cuda Runtime (out of memory)
+[05/08/2026-13:40:14] [TRT] [W] Requested amount of GPU memory (702941056 bytes) could not be allocated. There may not be enough free memory for allocation to succeed.
+[05/08/2026-13:40:14] [TRT] [E] [engine.cpp::readEngineFromArchive::1138] Error Code 2: OutOfMemory (Requested size was 702941056 bytes.)
+Traceback (most recent call last):
+  File "/workspace/Wan2.2/generate_with_trt_blocks.py", line 32, in <module>
+    runpy.run_module("generate_with_hook", run_name="__main__")
+  File "<frozen runpy>", line 229, in run_module
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/generate_with_hook.py", line 582, in <module>
+    generate(args)
+  File "/workspace/Wan2.2/generate_with_hook.py", line 497, in generate
+    install_export_hook(wan_s2v.noise_model, onnx_path="/workspace/s2v_trt/stem.onnx")
+  File "/workspace/Wan2.2/generate_with_trt_blocks.py", line 19, in _install_trt_block_runners
+    runners = install_block_runners(
+              ^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Wan2.2/trt_conv/block_runner.py", line 113, in install_block_runners
+    runner = BlockTRTRunner(str(engine_path), device=device)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Wan2.2/trt_conv/block_runner.py", line 26, in __init__
+    raise RuntimeError(f"failed to deserialize engine at {engine_path}")
+RuntimeError: failed to deserialize engine at /workspace/s2v_trt/blocks/block_28.trt
+
+-- please add temporary logging:
+nvidia-smi after loading WanModel_S2V
+nvidia-smi before and after loading the first trt block
+nvidia-smi before and after loading the tenth trt block
