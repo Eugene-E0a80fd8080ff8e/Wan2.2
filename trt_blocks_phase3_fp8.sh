@@ -12,11 +12,8 @@ WORKDIR=/workspace/workdir
 
 mkdir -p "$BLOCKS_DIR" "$WORKDIR"
 
-for onnx in "$BLOCKS_DIR"/block_*.onnx; do
+for onnx in "$BLOCKS_DIR"/block_[0-9][0-9].onnx; do
     base=$(basename "$onnx" .onnx)
-    # skip already-quantized variants on disk (we glob block_*.onnx so
-    # block_NN.fp8.onnx would also match)
-    case "$base" in *.fp8) continue ;; esac
 
     snap="$BLOCKS_DIR/$base.pt"
     fp8_onnx="$BLOCKS_DIR/$base.fp8.onnx"

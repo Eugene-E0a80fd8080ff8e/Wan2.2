@@ -2099,3 +2099,33 @@ terminate called after throwing an instance of 'onnxruntime::OnnxRuntimeExceptio
 
 
 Aborted
+
+---
+[2026-05-08 21:14:17]
+$ sh trt_blocks_phase3_fp8.sh 
+[phase3_fp8] block_00.fp16_named: quantizing to fp8 onnx
+[block_fp8] loading /workspace/s2v_trt/blocks/block_00.fp16_named.onnx
+[block_fp8] converting bf16 -> fp32 in memory
+[block_fp8] converted 0 bf16 entities
+[block_fp8] hoisting Constant nodes to initializers
+[block_fp8] hoisted 0 Constant nodes
+[block_fp8] writing fp32 staging onnx to /workspace/workdir/block_00.fp16_named.fp32.onnx
+[block_fp8] building calibration feed from /workspace/s2v_trt/blocks/block_00.fp16_named.pt
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_block_fp8.py", line 187, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_block_fp8.py", line 155, in main
+    snap = torch.load(args.inputs, map_location="cpu", weights_only=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/serialization.py", line 1479, in load
+    with _open_file_like(f, "rb") as opened_file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/serialization.py", line 759, in _open_file_like
+    return _open_file(name_or_buffer, mode)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/serialization.py", line 740, in __init__
+    super().__init__(open(name, mode))
+                     ^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/s2v_trt/blocks/block_00.fp16_named.pt'
