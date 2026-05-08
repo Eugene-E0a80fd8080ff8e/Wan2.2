@@ -1418,3 +1418,129 @@ Traceback (most recent call last):
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 onnxruntime.capi.onnxruntime_pybind11_state.InvalidArgument: [ONNXRuntimeError] : 2 : INVALID_ARGUMENT : Unexpected input data type. Actual: (tensor(float)) , expected: (tensor(bfloat16))
 root@C.35504872:/workspace/s2v_trt$
+
+---
+[2026-04-24 14:31:40]
+2026-04-24 07:28:32.718750871 [W:onnxruntime:Default, tensorrt_execution_provider.h:90 log] [2026-04-24 07:28:32 WARNING] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+2026-04-24 07:28:56.550053432 [W:onnxruntime:, transformer_memcpy.cc:74 ApplyImpl] 1944 Memcpy nodes are added to the graph main_graph for CUDAExecutionProvider. It might have negative impact on performance (including unable to run CUDA graph). Set session_options.log_severity_level=1 to see the detail logs before this message.
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8.py", line 127, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8.py", line 116, in main
+    quantize(
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py", line 357, in quantize
+    nodes_to_exclude = find_nodes_from_mha_to_exclude(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py", line 778, in find_nodes_from_mha_to_exclude
+    output_map = get_extended_model_outputs(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py", line 636, in get_extended_model_outputs
+    outputs = session.run(extended_model_output_names, inputs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 266, in run
+    return self._sess.run(output_names, input_feed, run_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+onnxruntime.capi.onnxruntime_pybind11_state.InvalidArgument: [ONNXRuntimeError] : 2 : INVALID_ARGUMENT : Unexpected input data type. Actual: (tensor(float)) , expected: (tensor(bfloat16))
+---
+do not do anything. explain me, what are those input, and what are those matched to ?
+
+---
+[2026-05-08 11:50:27]
+Окей, I'm returning to this project after a pause. 
+
+Could you please remind me which file is phase one? 
+
+I have tried to run trt_export_phase2.sh and got this :
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/run_export.py", line 146, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/run_export.py", line 87, in main
+    snap = torch.load(args.inputs, map_location="cpu", weights_only=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/serialization.py", line 1479, in load
+    with _open_file_like(f, "rb") as opened_file:
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/serialization.py", line 759, in _open_file_like
+    return _open_file(name_or_buffer, mode)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/serialization.py", line 740, in __init__
+    super().__init__(open(name, mode))
+                     ^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/s2v_trt/stem.onnx.inputs.pt'
+
+---
+[2026-05-08 12:18:00]
+root@C.36327693:/workspace/Wan2.2$ sh trt_validate_phase3.sh 
+/usr/bin/python: No module named trt_conv.validate_stem
+root@C.36327693:/workspace/Wan2.2$
+
+---
+[2026-05-08 12:19:17]
+Would it be correct to just delete trt_validate_phase3.sh and rename trtexec1.sh to trtexec1_phase3.sh  ?
+
+---
+[2026-05-08 12:21:07]
+1. please update trt_validate_phase3.sh with stem_runner
+
+2. I have created trt_export_phase1.sh  please check it
+
+---
+[2026-05-08 12:22:32]
+<ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/generate_with_trt.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
+root@C.36327693:/workspace/Wan2.2$ sh trt_validate_phase3.sh 
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/stem_runner.py", line 136, in <module>
+    runner = StemTRTRunner(args.engine, device=args.device)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Wan2.2/trt_conv/stem_runner.py", line 36, in __init__
+    with open(engine_path, "rb") as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/workspace/s2v_trt/stem.trt'
+root@C.36327693:/workspace/Wan2.2$ 
+
+
+---
+
+At what point do we create stem.trt?
+
+---
+[2026-05-08 12:44:30]
+I can see that stem TRT is 30 gigabytes. 
+
+This feels like bfloat16 (or float16). Is it so?
+
+---
+[2026-05-08 12:48:28]
+Окей, let's make a test run with bfloat16, and then we will continue to making fp8.
+
+How do I do a test run?
+
+---
+[2026-05-08 12:58:25]
+okay it works
+
+Now let's move on to creating FP8. Where did we stop? I remember something was not working. Or maybe I'm wrong.
+
+---
+[2026-05-08 13:06:11]
+I suggest we do this conversion in a simplier way. 
+
+lets take stem.trt and convert it to float32 in memory, it would be about 60 gigs , but it is okay, as taday I am renting RTX PRO 6000 with 96 gigs onboard.
+
+And then, starting from that float32, we will do fp8 conversion. 
+
+do not save float32 version to the storage , as there is only 50 gigs left now.
+
+What do you think about this plan?
+
+---
+[2026-05-08 13:07:58]
+please do quantize_fp8_via_fp32.py
+(and make .sh starter script)
