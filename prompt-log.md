@@ -1907,3 +1907,32 @@ Traceback (most recent call last):
     return self._sess.run(output_names, input_feed, run_options)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 onnxruntime.capi.onnxruntime_pybind11_state.RuntimeException: [ONNXRuntimeError] : 6 : RUNTIME_EXCEPTION : Non-zero status code returned while running MatMul node. Name:'/MatMul_3' Status Message: /onnxruntime_src/onnxruntime/core/framework/bfc_arena.cc:376 void* onnxruntime::BFCArena::AllocateRawInternal(size_t, bool, onnxruntime::Stream*, bool, onnxruntime::WaitNotificationFn) Failed to allocate memory for requested buffer of size 43370127360
+
+---
+[2026-05-08 18:22:54]
+<ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/trt_conv/quantize_fp8_via_fp32.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
+it failed again. 
+
+Let's abandon this approach and switch to a different one. 
+
+The stem consists of a number of blocks. Some of those are transformers and some of those are audio injections, right? I want to convert every such block into TensorRT engine separately. 
+
+Let's start with trivial conversion from the source weights of bfloat16 to tensorrt bfloat16 (or float16)
+
+1. We need a separate program which will accept the big ONNX which we have and output smaller onnx of given block . Just a single one. 
+2. The sh file which would iterate over all the blocks, ignoring those which are already present. 
+
+3. separate program which would convert a smaller ONNX block into TensorRT engine. 
+4. the .sh file to which would iterate (3) over all the blocks, ignoring those which are already present. 
+
+5. We need some changes in Wan2.2 to substitute for this new blocks
+
+What do you think, is this a good idea?
+
+---
+[2026-05-08 18:26:42]
+1 (a)
+
+2. Just ignore how to injector for now. Keep it in pytorch
+
+looks good
