@@ -1853,3 +1853,16 @@ Traceback (most recent call last):
     return self._sess.run(output_names, input_feed, run_options)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 onnxruntime.capi.onnxruntime_pybind11_state.RuntimeException: [ONNXRuntimeError] : 6 : RUNTIME_EXCEPTION : Non-zero status code returned while running Transpose node. Name:'/Transpose_211' Status Message: /onnxruntime_src/onnxruntime/core/framework/bfc_arena.cc:376 void* onnxruntime::BFCArena::AllocateRawInternal(size_t, bool, onnxruntime::Stream*, bool, onnxruntime::WaitNotificationFn) Failed to allocate memory for requested buffer of size 104857600
+
+---
+[2026-05-08 17:44:42]
+<ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/trt_conv/quantize_fp8_via_fp32.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8_via_fp32.py", line 217, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_fp8_via_fp32.py", line 193, in main
+    quantize = _q_mod.quantize
+               ^^^^^^^^^^^^^^^
+AttributeError: 'function' object has no attribute 'quantize'
