@@ -289,13 +289,13 @@ def main():
         quantize_mode="fp8",
         calibration_data=feeds[0],  # placeholder; replaced by our reader
         calibration_method=args.calibration_method,
-        # TRT EP first: only TRT has flash attention, which avoids
-        # materializing the 16464×16464×40 attention score buffer (~43 GB
-        # fp32 / ~22 GB fp16). The earlier 89 GB OOM with TRT EP was during
-        # MHA exclusion's extended-outputs model — that path is now disabled
-        # via --skip_mha_exclude, so TRT EP should be able to fuse cleanly.
-        # Falls back to CUDA/CPU for ops TRT can't handle.
-        calibration_eps=["trt", "cuda:0", "cpu"],
+        # CPU EP only. The 16464×16464×40 attention score buffer is ~43 GB
+        # fp32 / ~22 GB fp16 — neither fits on a 48 GB card via CUDA EP, and
+        # TRT EP refuses the graph because the bf16->fp32->softmax->bf16
+        # upcasts in the original PyTorch model break flash-attention fusion.
+        # CPU EP uses system RAM (which is plentiful on vast.ai) and avoids
+        # all GPU memory issues. Slow but reliable.
+        calibration_eps=["cpu"],
         output_path=args.out,
         use_external_data_format=True,
         nodes_to_exclude=nodes_to_exclude,

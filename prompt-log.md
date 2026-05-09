@@ -2421,3 +2421,35 @@ onnxruntime.capi.onnxruntime_pybind11_state.RuntimeException: [ONNXRuntimeError]
 ---
 
 okay .please explain, why does it needs so much memory ?
+
+---
+[2026-05-09 12:54:49]
+2026-05-09 05:53:59.927641235 [E:onnxruntime:Default, tensorrt_execution_provider.h:88 log] [2026-05-09 05:53:59   ERROR] IBuilder::buildSerializedNetwork: Error Code 10: Internal Error (Could not find any implementation for node {ForeignNode[/Cast_10.../Add_31]}.)
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_block_fp8.py", line 308, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_block_fp8.py", line 287, in main
+    quantize(
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py", line 372, in quantize
+    onnx_model = quantize_func(
+                 ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/fp8.py", line 282, in quantize
+    quantize_static(
+  File "/workspace/Wan2.2/trt_conv/quantize_block_fp8.py", line 278, in _patched_quantize_static
+    return _orig_quantize_static(**bound.arguments)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py", line 720, in _quantize_static
+    calibrator = calibrate.create_calibrator(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py", line 626, in _create_calibrator_with_extra_options
+    calibrator.create_inference_session(**extra_options)
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py", line 293, in _create_inference_session_with_ep_config
+    calibrator.infer_session = ort.InferenceSession(
+                               ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 465, in __init__
+    self._create_inference_session(providers, provider_options, disabled_optimizers)
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 537, in _create_inference_session
+    sess.initialize_session(providers, provider_options, disabled_optimizers)
+onnxruntime.capi.onnxruntime_pybind11_state.Fail: [ONNXRuntimeError] : 1 : FAIL : TensorRT EP failed to create engine from network for fused node: TensorrtExecutionProvider_TRTKernel_graph_main_graph_3149470602548782306_0_0

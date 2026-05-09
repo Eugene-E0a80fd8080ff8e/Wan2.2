@@ -48,7 +48,7 @@ for onnx in "$BLOCKS_DIR"/block_[0-9][0-9].onnx; do
             --workdir "$WORKDIR" \
             --calibration_method max \
             --skip_mha_exclude \
-            --staging_dtype fp16
+            --staging_dtype fp32
     else
         echo "[phase3_fp8] $base: fp8 onnx exists, reusing"
     fi
