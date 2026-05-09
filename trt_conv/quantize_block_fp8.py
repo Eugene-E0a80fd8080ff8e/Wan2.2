@@ -275,10 +275,14 @@ def main():
         quantize_mode="fp8",
         calibration_data=feeds[0],  # placeholder; replaced by our reader
         calibration_method=args.calibration_method,
-        calibration_eps=["trt", "cuda:0", "cpu"],
+        # CUDA EP only. TRT EP would JIT-compile a giant fused engine that
+        # asks for ~89 GB on this graph; per-node CUDA calibration sidesteps
+        # that by keeping only one MatMul's activation alive at a time.
+        calibration_eps=["cuda:0", "cpu"],
         output_path=args.out,
         use_external_data_format=True,
         nodes_to_exclude=nodes_to_exclude,
+        calibrate_per_node=True,
     )
     print(f"[block_fp8] wrote {args.out}")
 

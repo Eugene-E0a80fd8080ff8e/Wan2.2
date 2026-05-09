@@ -2311,3 +2311,43 @@ Traceback (most recent call last):
     return _orig_quantize_static(*p_args, **p_kwargs)
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 TypeError: _quantize_static() got multiple values for argument 'calibration_data_reader'
+
+---
+[2026-05-09 12:26:30]
+WARNING:root:Please consider to run pre-processing before quantization. Refer to example: https://github.com/microsoft/onnxruntime-inference-examples/blob/main/quantization/image_classification/cpu/ReadMe.md 
+2026-05-09 05:22:51.162625200 [W:onnxruntime:Default, tensorrt_execution_provider.h:90 log] [2026-05-09 05:22:51 WARNING] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+2026-05-09 05:22:53.436490023 [W:onnxruntime:Default, tensorrt_execution_provider.h:90 log] [2026-05-09 05:22:53 WARNING] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+2026-05-09 05:24:28.471580496 [W:onnxruntime:Default, tensorrt_execution_provider.h:90 log] [2026-05-09 05:24:28 WARNING] UNSUPPORTED_STATE: Skipping tactic 0 due to insufficient memory on requested size of 89194807808 detected for tactic 0x0000000000000000.
+2026-05-09 05:24:28.492762049 [E:onnxruntime:Default, tensorrt_execution_provider.h:88 log] [2026-05-09 05:24:28   ERROR] IBuilder::buildSerializedNetwork: Error Code 10: Internal Error (Could not find any implementation for node {ForeignNode[/Cast_10.../Add_31]}.)
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_block_fp8.py", line 287, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_block_fp8.py", line 273, in main
+    quantize(
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py", line 372, in quantize
+    onnx_model = quantize_func(
+                 ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/fp8.py", line 282, in quantize
+    quantize_static(
+  File "/workspace/Wan2.2/trt_conv/quantize_block_fp8.py", line 264, in _patched_quantize_static
+    return _orig_quantize_static(**bound.arguments)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py", line 720, in _quantize_static
+    calibrator = calibrate.create_calibrator(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py", line 626, in _create_calibrator_with_extra_options
+    calibrator.create_inference_session(**extra_options)
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_patching.py", line 293, in _create_inference_session_with_ep_config
+    calibrator.infer_session = ort.InferenceSession(
+                               ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 465, in __init__
+    self._create_inference_session(providers, provider_options, disabled_optimizers)
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 537, in _create_inference_session
+    sess.initialize_session(providers, provider_options, disabled_optimizers)
+onnxruntime.capi.onnxruntime_pybind11_state.Fail: [ONNXRuntimeError] : 1 : FAIL : TensorRT EP failed to create engine from network for fused node: TensorrtExecutionProvider_TRTKernel_graph_main_graph_6516109536769599532_0_0
+
+---
+[2026-05-09 12:28:32]
+go on
