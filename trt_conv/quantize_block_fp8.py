@@ -116,6 +116,8 @@ def main():
                     help="staging dir for fp32 ONNX + ModelOpt scratch files")
     ap.add_argument("--calibration_method", default="entropy",
                     choices=["max", "entropy", "percentile"])
+    ap.add_argument("--skip_mha_exclude", action="store_true",
+                    help="skip MHA exclusion analysis (avoids TRT engine build OOM)")
     args = ap.parse_args()
 
     onnx_path = Path(args.onnx)
@@ -174,6 +176,11 @@ def main():
     # adjacent to attention (softmax inputs, etc.) at higher precision, which
     # FP8 quantization quality depends on.
     from modelopt.onnx.quantization import quantize
+    import modelopt.onnx.quantization.graph_utils as _graph_utils
+
+    if args.skip_mha_exclude:
+        _orig_find_mha = _graph_utils.find_nodes_from_mha_to_exclude
+        _graph_utils.find_nodes_from_mha_to_exclude = lambda *a, **kw: []
 
     # ModelOpt's quantize() builds an ORT calibration reader from a single
     # `calibration_data` dict. To feed multiple samples we monkey-patch
