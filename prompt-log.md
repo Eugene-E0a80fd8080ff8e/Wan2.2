@@ -2264,3 +2264,24 @@ root@C.36379754:/workspace/Wan2.2$
 ---
 [2026-05-09 12:15:30]
 Can I just exclude MHA manually? iThere is just a simple transformer inside, with a residual connection, right?
+
+---
+[2026-05-09 12:19:50]
+[05/09/2026-05:19:22] [TRT] [W] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+WARNING:root:No custom ops found. If that's not correct, please make sure that the 'tensorrt' python package is correctly installed and that the paths to 'libcudnn*.so' and TensorRT 'lib/' are in 'LD_LIBRARY_PATH'. If the custom op is not directly available as a plugin in TensorRT, please also make sure that the path to the compiled '.so' TensorRT plugin is also being given via the  '--trt_plugins' flag (requires TRT 10+).
+INFO:root:Model /workspace/workdir/block_00.fp32.onnx with opset_version 17 is loaded.
+INFO:root:Model is cloned to /workspace/s2v_trt/blocks/block_00.fp32_named.onnx after naming the nodes.
+INFO:root:Quantization Mode: fp8
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_block_fp8.py", line 283, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_block_fp8.py", line 269, in main
+    quantize(
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py", line 372, in quantize
+    onnx_model = quantize_func(
+                 ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/fp8.py", line 216, in quantize
+    raise RuntimeError("Only the max calibration method is supported for FP8 quantization.")
+RuntimeError: Only the max calibration method is supported for FP8 quantization.
