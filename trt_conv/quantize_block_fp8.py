@@ -289,10 +289,13 @@ def main():
         quantize_mode="fp8",
         calibration_data=feeds[0],  # placeholder; replaced by our reader
         calibration_method=args.calibration_method,
-        # CUDA EP only. TRT EP would JIT-compile a giant fused engine that
-        # asks for ~89 GB on this graph; per-node CUDA calibration sidesteps
-        # that by keeping only one MatMul's activation alive at a time.
-        calibration_eps=["cuda:0", "cpu"],
+        # TRT EP first: only TRT has flash attention, which avoids
+        # materializing the 16464×16464×40 attention score buffer (~43 GB
+        # fp32 / ~22 GB fp16). The earlier 89 GB OOM with TRT EP was during
+        # MHA exclusion's extended-outputs model — that path is now disabled
+        # via --skip_mha_exclude, so TRT EP should be able to fuse cleanly.
+        # Falls back to CUDA/CPU for ops TRT can't handle.
+        calibration_eps=["trt", "cuda:0", "cpu"],
         output_path=args.out,
         use_external_data_format=True,
         nodes_to_exclude=nodes_to_exclude,
