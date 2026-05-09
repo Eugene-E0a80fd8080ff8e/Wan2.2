@@ -2193,3 +2193,14 @@ what is MHA , and why did we exluded it ?
 Well, I believe right now the scope of this problem is limited to just a single transformer, right? So we can just return it. 
 
 If so, please return it back.
+
+---
+[2026-05-09 08:15:49]
+okay. It is slightlty better.
+
+lets do 
+> Switch calibration_method to entropy
+and 
+> Capture 3–5 diffusion steps' inputs (e.g., steps 0, 4, 8, 12, 15 of a 16-step run), pass all as calibration data
+
+Do we need to capture that on different prompts? Or a single one is enough?

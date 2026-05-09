@@ -109,10 +109,13 @@ def _build_feed(snap, graph_dtypes):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--onnx", required=True, help="input bf16 block ONNX")
-    ap.add_argument("--inputs", required=True, help="block_NN.pt snapshot")
+    ap.add_argument("--inputs", required=True, nargs="+",
+                    help="block snapshot file(s); pass multiple for multi-sample calibration")
     ap.add_argument("--out", required=True, help="output fp8 ONNX path")
     ap.add_argument("--workdir", default="/workspace/workdir",
-                    help="staging dir for fp16 ONNX + ModelOpt scratch files")
+                    help="staging dir for fp32 ONNX + ModelOpt scratch files")
+    ap.add_argument("--calibration_method", default="entropy",
+                    choices=["max", "entropy", "percentile"])
     args = ap.parse_args()
 
     onnx_path = Path(args.onnx)
@@ -150,16 +153,20 @@ def main():
         del model
         gc.collect()
 
-    print(f"[block_fp8] building calibration feed from {args.inputs}")
-    snap = torch.load(args.inputs, map_location="cpu", weights_only=False)
     staging_meta = onnx.load(str(fp32_onnx), load_external_data=False)
     graph_dtypes = {
         inp.name: inp.type.tensor_type.elem_type for inp in staging_meta.graph.input
     }
     del staging_meta
-    feed = _build_feed(snap, graph_dtypes)
-    for name, arr in feed.items():
-        print(f"[block_fp8] {name:12s} {arr.shape} {arr.dtype}")
+
+    print(f"[block_fp8] building {len(args.inputs)} calibration sample(s)")
+    feeds = []
+    for path in args.inputs:
+        snap = torch.load(path, map_location="cpu", weights_only=False)
+        feeds.append(_build_feed(snap, graph_dtypes))
+        print(f"[block_fp8]   loaded {path}")
+    for name, arr in feeds[0].items():
+        print(f"[block_fp8] {name:12s} {arr.shape} {arr.dtype}  (×{len(feeds)} samples)")
 
     # MHA exclusion analysis is enabled — per-block scope is small enough to
     # fit, and TRT EP (in calibration_eps below) gives it flash attention so
@@ -168,15 +175,40 @@ def main():
     # FP8 quantization quality depends on.
     from modelopt.onnx.quantization import quantize
 
-    print(f"[block_fp8] quantizing -> {args.out} (FP8)")
+    # ModelOpt's quantize() builds an ORT calibration reader from a single
+    # `calibration_data` dict. To feed multiple samples we monkey-patch
+    # fp8.quantize_static to swap in our own multi-sample reader.
+    import modelopt.onnx.quantization.fp8 as _fp8
+    _orig_quantize_static = _fp8.quantize_static
+
+    class _MultiSampleReader:
+        def __init__(self, samples):
+            self.samples = samples
+            self.idx = 0
+        def get_next(self):
+            if self.idx >= len(self.samples):
+                return None
+            s = self.samples[self.idx]
+            self.idx += 1
+            return s
+        def rewind(self):
+            self.idx = 0
+
+    reader = _MultiSampleReader(feeds)
+
+    def _patched_quantize_static(*p_args, **p_kwargs):
+        p_kwargs["calibration_data_reader"] = reader
+        return _orig_quantize_static(*p_args, **p_kwargs)
+
+    _fp8.quantize_static = _patched_quantize_static
+
+    print(f"[block_fp8] quantizing -> {args.out} "
+          f"(FP8, method={args.calibration_method}, samples={len(feeds)})")
     quantize(
         onnx_path=str(fp32_onnx),
         quantize_mode="fp8",
-        calibration_data=feed,
-        calibration_method="max",
-        # TRT EP first: it has flash attention so the seq×seq×heads attention
-        # buffer is never materialized (CUDA EP needs ~43 GB for it, blowing
-        # the GPU). Falls back to CUDA/CPU for any unsupported ops.
+        calibration_data=feeds[0],  # placeholder; replaced by our reader
+        calibration_method=args.calibration_method,
         calibration_eps=["trt", "cuda:0", "cpu"],
         output_path=args.out,
         use_external_data_format=True,
