@@ -28,47 +28,54 @@ from trt_conv.quantize_fp8_via_fp32 import _hoist_constants_to_initializers
 BLOCK_TENSOR_INPUT_NAMES = ["x", "e_tensor", "seq_lens", "freqs", "context"]
 
 
-def _convert_tensor_bf16_to_fp32(tp: onnx.TensorProto) -> None:
+_DTYPE_NP = {
+    onnx.TensorProto.FLOAT: np.float32,
+    onnx.TensorProto.FLOAT16: np.float16,
+}
+
+
+def _convert_tensor_bf16_to(tp: onnx.TensorProto, target_elem_type: int) -> None:
     if tp.data_type != onnx.TensorProto.BFLOAT16:
         return
+    np_dtype = _DTYPE_NP[target_elem_type]
     if tp.raw_data:
-        arr_bf16 = np.frombuffer(tp.raw_data, dtype=ml_dtypes.bfloat16)
-        tp.raw_data = arr_bf16.astype(np.float32).tobytes()
+        arr = np.frombuffer(tp.raw_data, dtype=ml_dtypes.bfloat16)
+        tp.raw_data = arr.astype(np_dtype).tobytes()
     elif len(tp.int32_data) > 0:
         arr_u16 = np.array(tp.int32_data, dtype=np.uint32).astype(np.uint16)
         arr_bf16 = arr_u16.view(ml_dtypes.bfloat16)
         del tp.int32_data[:]
-        tp.raw_data = arr_bf16.astype(np.float32).tobytes()
-    tp.data_type = onnx.TensorProto.FLOAT
+        tp.raw_data = arr_bf16.astype(np_dtype).tobytes()
+    tp.data_type = target_elem_type
 
 
-def _convert_graph_bf16_to_fp32(g: onnx.GraphProto) -> int:
+def _convert_graph_bf16_to(g: onnx.GraphProto, target_elem_type: int) -> int:
     n = 0
     for init in g.initializer:
         if init.data_type == onnx.TensorProto.BFLOAT16:
-            _convert_tensor_bf16_to_fp32(init)
+            _convert_tensor_bf16_to(init, target_elem_type)
             n += 1
     for vi in list(g.input) + list(g.output) + list(g.value_info):
         if vi.type.tensor_type.elem_type == onnx.TensorProto.BFLOAT16:
-            vi.type.tensor_type.elem_type = onnx.TensorProto.FLOAT
+            vi.type.tensor_type.elem_type = target_elem_type
             n += 1
     for node in g.node:
         if node.op_type == "Cast":
             for attr in node.attribute:
                 if attr.name == "to" and attr.i == onnx.TensorProto.BFLOAT16:
-                    attr.i = onnx.TensorProto.FLOAT
+                    attr.i = target_elem_type
                     n += 1
         elif node.op_type == "Constant":
             for attr in node.attribute:
                 if attr.name == "value" and attr.t.data_type == onnx.TensorProto.BFLOAT16:
-                    _convert_tensor_bf16_to_fp32(attr.t)
+                    _convert_tensor_bf16_to(attr.t, target_elem_type)
                     n += 1
         for attr in node.attribute:
             if attr.type == onnx.AttributeProto.GRAPH:
-                n += _convert_graph_bf16_to_fp32(attr.g)
+                n += _convert_graph_bf16_to(attr.g, target_elem_type)
             elif attr.type == onnx.AttributeProto.GRAPHS:
                 for sg in attr.graphs:
-                    n += _convert_graph_bf16_to_fp32(sg)
+                    n += _convert_graph_bf16_to(sg, target_elem_type)
     return n
 
 
@@ -164,44 +171,51 @@ def main():
                     choices=["max", "entropy", "percentile"])
     ap.add_argument("--skip_mha_exclude", action="store_true",
                     help="skip MHA exclusion analysis (avoids TRT engine build OOM)")
+    ap.add_argument("--staging_dtype", default="fp32", choices=["fp32", "fp16"],
+                    help="precision of the bf16->X staging ONNX (fp16 halves the "
+                    "calibration attention buffer; needed on smaller GPUs)")
     args = ap.parse_args()
 
     onnx_path = Path(args.onnx)
     workdir = Path(args.workdir)
     workdir.mkdir(parents=True, exist_ok=True)
 
-    stem = onnx_path.stem  # e.g. "block_05"
-    fp32_onnx = workdir / f"{stem}.fp32.onnx"
-    fp32_data = f"{stem}.fp32.onnx.data"
-    fp32_data_path = workdir / fp32_data
+    target_elem = (onnx.TensorProto.FLOAT16
+                   if args.staging_dtype == "fp16"
+                   else onnx.TensorProto.FLOAT)
 
-    if fp32_onnx.exists() and fp32_data_path.exists():
-        print(f"[block_fp8] reusing existing fp32 staging {fp32_onnx}")
+    stem = onnx_path.stem  # e.g. "block_05"
+    staging_onnx = workdir / f"{stem}.{args.staging_dtype}.onnx"
+    staging_data = f"{stem}.{args.staging_dtype}.onnx.data"
+    staging_data_path = workdir / staging_data
+
+    if staging_onnx.exists() and staging_data_path.exists():
+        print(f"[block_fp8] reusing existing {args.staging_dtype} staging {staging_onnx}")
     else:
         print(f"[block_fp8] loading {onnx_path}")
         model = onnx.load(str(onnx_path), load_external_data=True)
 
-        print(f"[block_fp8] converting bf16 -> fp32 in memory")
-        n = _convert_graph_bf16_to_fp32(model.graph)
+        print(f"[block_fp8] converting bf16 -> {args.staging_dtype} in memory")
+        n = _convert_graph_bf16_to(model.graph, target_elem)
         print(f"[block_fp8] converted {n} bf16 entities")
 
         print(f"[block_fp8] hoisting Constant nodes to initializers")
         n = _hoist_constants_to_initializers(model.graph)
         print(f"[block_fp8] hoisted {n} Constant nodes")
 
-        print(f"[block_fp8] writing fp32 staging onnx to {fp32_onnx}")
+        print(f"[block_fp8] writing {args.staging_dtype} staging onnx to {staging_onnx}")
         onnx.save(
             model,
-            str(fp32_onnx),
+            str(staging_onnx),
             save_as_external_data=True,
             all_tensors_to_one_file=True,
-            location=fp32_data,
+            location=staging_data,
             size_threshold=1024,
         )
         del model
         gc.collect()
 
-    staging_meta = onnx.load(str(fp32_onnx), load_external_data=False)
+    staging_meta = onnx.load(str(staging_onnx), load_external_data=False)
     graph_dtypes = {
         inp.name: inp.type.tensor_type.elem_type for inp in staging_meta.graph.input
     }
@@ -271,7 +285,7 @@ def main():
           f"(FP8, method={args.calibration_method}, samples={len(feeds)}, "
           f"manual_excludes={len(manual_mha_excludes) if nodes_to_exclude else 0})")
     quantize(
-        onnx_path=str(fp32_onnx),
+        onnx_path=str(staging_onnx),
         quantize_mode="fp8",
         calibration_data=feeds[0],  # placeholder; replaced by our reader
         calibration_method=args.calibration_method,
