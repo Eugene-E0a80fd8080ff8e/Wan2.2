@@ -237,8 +237,11 @@ def main():
     # ModelOpt's quantize() builds an ORT calibration reader from a single
     # `calibration_data` dict. To feed multiple samples we monkey-patch
     # fp8.quantize_static to swap in our own multi-sample reader.
+    import inspect
+
     import modelopt.onnx.quantization.fp8 as _fp8
     _orig_quantize_static = _fp8.quantize_static
+    _orig_sig = inspect.signature(_orig_quantize_static)
 
     class _MultiSampleReader:
         def __init__(self, samples):
@@ -256,8 +259,9 @@ def main():
     reader = _MultiSampleReader(feeds)
 
     def _patched_quantize_static(*p_args, **p_kwargs):
-        p_kwargs["calibration_data_reader"] = reader
-        return _orig_quantize_static(*p_args, **p_kwargs)
+        bound = _orig_sig.bind(*p_args, **p_kwargs)
+        bound.arguments["calibration_data_reader"] = reader
+        return _orig_quantize_static(**bound.arguments)
 
     _fp8.quantize_static = _patched_quantize_static
 

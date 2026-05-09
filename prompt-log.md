@@ -2285,3 +2285,29 @@ Traceback (most recent call last):
   File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/fp8.py", line 216, in quantize
     raise RuntimeError("Only the max calibration method is supported for FP8 quantization.")
 RuntimeError: Only the max calibration method is supported for FP8 quantization.
+
+---
+[2026-05-09 12:21:43]
+INFO:root:Quantization Mode: fp8
+INFO:root:Successfully imported the `tensorrt` python package with version 10.10.0.31.
+INFO:root:libcudnn_adv*.so* is accessible in /usr/lib/x86_64-linux-gnu/libcudnn_adv.so! Please check that this is the correct version needed for your ORT version at https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements.
+INFO:root:libcudnn_adv*.so* is accessible in /usr/lib/x86_64-linux-gnu/libcudnn_adv.so! Please check that this is the correct version needed for your ORT version at https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html#requirements.
+INFO:root:Successfully enabled 3 EPs for ORT: ['TensorrtExecutionProvider', ('CUDAExecutionProvider', {'device_id': 0}), 'CPUExecutionProvider']
+INFO:root:Quantizable op types in the model: ['MatMul']
+INFO:root:Total number of nodes: 383
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_block_fp8.py", line 283, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_block_fp8.py", line 269, in main
+    quantize(
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py", line 372, in quantize
+    onnx_model = quantize_func(
+                 ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/fp8.py", line 282, in quantize
+    quantize_static(
+  File "/workspace/Wan2.2/trt_conv/quantize_block_fp8.py", line 260, in _patched_quantize_static
+    return _orig_quantize_static(*p_args, **p_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: _quantize_static() got multiple values for argument 'calibration_data_reader'
