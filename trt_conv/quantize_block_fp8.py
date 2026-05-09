@@ -84,6 +84,52 @@ def _tensor_to_numpy(t: torch.Tensor, graph_dtype: int) -> np.ndarray:
     return t.detach().cpu().numpy()
 
 
+def _find_attention_bmms(graph: onnx.GraphProto) -> list[str]:
+    """Return names of MatMul nodes whose inputs are both activations.
+
+    These are the attention BMMs (Q@K^T and softmax@V) that NVIDIA's
+    automatic MHA exclusion identifies. Skipping FP8 on these preserves
+    quality. Projection/FFN MatMuls (which have a weight initializer)
+    keep getting FP8.
+
+    Heuristic: a tensor is "a weight" if it's an initializer or Constant
+    output, possibly via pass-through ops (Cast/Reshape/Transpose/etc.).
+    """
+    init_names = {init.name for init in graph.initializer}
+    const_outputs = {o for n in graph.node if n.op_type == "Constant" for o in n.output}
+    weight_tensors = init_names | const_outputs
+
+    producer = {}
+    for n in graph.node:
+        for o in n.output:
+            producer[o] = n
+
+    PASS_THROUGH = {"Cast", "Reshape", "Transpose", "Identity",
+                    "Squeeze", "Unsqueeze", "Expand"}
+
+    def traces_to_weight(name, depth=12):
+        if name in weight_tensors:
+            return True
+        if depth <= 0:
+            return False
+        n = producer.get(name)
+        if n is None:
+            return False
+        if n.op_type in PASS_THROUGH and n.input:
+            return traces_to_weight(n.input[0], depth - 1)
+        return False
+
+    bmms = []
+    for n in graph.node:
+        if n.op_type != "MatMul":
+            continue
+        if len(n.input) < 2:
+            continue
+        if not traces_to_weight(n.input[0]) and not traces_to_weight(n.input[1]):
+            bmms.append(n.name or f"<unnamed at output {n.output[0]}>")
+    return bmms
+
+
 def _build_feed(snap, graph_dtypes):
     """Map block snapshot keys -> ONNX input names. e_tensor comes from e[0]."""
     e_list = snap["e"]
@@ -159,7 +205,9 @@ def main():
     graph_dtypes = {
         inp.name: inp.type.tensor_type.elem_type for inp in staging_meta.graph.input
     }
+    manual_mha_excludes = _find_attention_bmms(staging_meta.graph)
     del staging_meta
+    print(f"[block_fp8] manual MHA-bmm exclusions: {manual_mha_excludes}")
 
     print(f"[block_fp8] building {len(args.inputs)} calibration sample(s)")
     feeds = []
@@ -176,11 +224,15 @@ def main():
     # adjacent to attention (softmax inputs, etc.) at higher precision, which
     # FP8 quantization quality depends on.
     from modelopt.onnx.quantization import quantize
-    import modelopt.onnx.quantization.graph_utils as _graph_utils
 
     if args.skip_mha_exclude:
-        _orig_find_mha = _graph_utils.find_nodes_from_mha_to_exclude
-        _graph_utils.find_nodes_from_mha_to_exclude = lambda *a, **kw: []
+        # quantize.py imported find_nodes_from_mha_to_exclude into its own
+        # namespace, so we patch THAT — patching graph_utils alone has no
+        # effect on the bound reference in quantize.py.
+        import importlib
+        _q_mod = importlib.import_module("modelopt.onnx.quantization.quantize")
+        _q_mod.find_nodes_from_mha_to_exclude = lambda *a, **kw: []
+        print("[block_fp8] MHA exclusion DISABLED (quality tradeoff)")
 
     # ModelOpt's quantize() builds an ORT calibration reader from a single
     # `calibration_data` dict. To feed multiple samples we monkey-patch
@@ -209,8 +261,11 @@ def main():
 
     _fp8.quantize_static = _patched_quantize_static
 
+    nodes_to_exclude = manual_mha_excludes if args.skip_mha_exclude else None
+
     print(f"[block_fp8] quantizing -> {args.out} "
-          f"(FP8, method={args.calibration_method}, samples={len(feeds)})")
+          f"(FP8, method={args.calibration_method}, samples={len(feeds)}, "
+          f"manual_excludes={len(manual_mha_excludes) if nodes_to_exclude else 0})")
     quantize(
         onnx_path=str(fp32_onnx),
         quantize_mode="fp8",
@@ -219,6 +274,7 @@ def main():
         calibration_eps=["trt", "cuda:0", "cpu"],
         output_path=args.out,
         use_external_data_format=True,
+        nodes_to_exclude=nodes_to_exclude,
     )
     print(f"[block_fp8] wrote {args.out}")
 

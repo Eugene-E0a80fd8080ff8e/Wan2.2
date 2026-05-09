@@ -2210,3 +2210,57 @@ Do we need to capture that on different prompts? Or a single one is enough?
 <ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/trt_conv/quantize_block_fp8.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
 $ sh trt_blocks_phase3_fp8.sh 
 trt_blocks_phase3_fp8.sh: 29: Syntax error: "(" unexpected (expecting "done")
+
+---
+[2026-05-09 12:10:09]
+2026-05-09 05:03:37.921512775 [W:onnxruntime:Default, tensorrt_execution_provider.h:90 log] [2026-05-09 05:03:37 WARNING] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+2026-05-09 05:03:40.117039172 [W:onnxruntime:Default, tensorrt_execution_provider.h:90 log] [2026-05-09 05:03:40 WARNING] ModelImporter.cpp:503: Make sure input seq_lens has Int64 binding.
+2026-05-09 05:05:21.805255362 [W:onnxruntime:Default, tensorrt_execution_provider.h:90 log] [2026-05-09 05:05:21 WARNING] UNSUPPORTED_STATE: Skipping tactic 0 due to insufficient memory on requested size of 91155516928 detected for tactic 0x0000000000000000.
+2026-05-09 05:05:21.826255565 [E:onnxruntime:Default, tensorrt_execution_provider.h:88 log] [2026-05-09 05:05:21   ERROR] IBuilder::buildSerializedNetwork: Error Code 10: Internal Error (Could not find any implementation for node {ForeignNode[/Cast_10.../Add_31]}.)
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/workspace/Wan2.2/trt_conv/quantize_block_fp8.py", line 227, in <module>
+    main()
+  File "/workspace/Wan2.2/trt_conv/quantize_block_fp8.py", line 214, in main
+    quantize(
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/quantize.py", line 357, in quantize
+    nodes_to_exclude = find_nodes_from_mha_to_exclude(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py", line 778, in find_nodes_from_mha_to_exclude
+    output_map = get_extended_model_outputs(
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/graph_utils.py", line 630, in get_extended_model_outputs
+    session = create_inference_session(extended_onnx_path, calibration_eps)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/modelopt/onnx/quantization/ort_utils.py", line 170, in create_inference_session
+    return ort.InferenceSession(
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 465, in __init__
+    self._create_inference_session(providers, provider_options, disabled_optimizers)
+  File "/usr/local/lib/python3.12/dist-packages/onnxruntime/capi/onnxruntime_inference_collection.py", line 537, in _create_inference_session
+    sess.initialize_session(providers, provider_options, disabled_optimizers)
+onnxruntime.capi.onnxruntime_pybind11_state.Fail: [ONNXRuntimeError] : 1 : FAIL : TensorRT EP failed to create engine from network for fused node: TensorrtExecutionProvider_TRTKernel_graph_main_graph_8445025524638569544_0_0
+
+---
+
+btw, today I have moved to rtx 6000 ada with 48 gigs.
+
+I believe I have enough memory for converting ~600 MB of onnx to fp8 tensorrt.
+why do I run out of memory?
+
+This is the files after the failure:
+```
+root@C.36379754:/workspace/Wan2.2$ ls -lh /workspace/s2v_trt/blocks/block_00*
+-rw-r--r-- 1 root root  51K May  9 05:03 /workspace/s2v_trt/blocks/block_00.fp32_named.extended.onnx
+-rw-r--r-- 1 root root 2.7G May  9 05:03 /workspace/s2v_trt/blocks/block_00.fp32_named.extended.onnx_data
+-rw-r--r-- 1 root root  50K May  9 05:03 /workspace/s2v_trt/blocks/block_00.fp32_named.onnx
+-rw-r--r-- 1 root root 2.7G May  9 05:03 /workspace/s2v_trt/blocks/block_00.fp32_named.onnx_data
+-rw-r--r-- 1 root root 671M May  9 04:21 /workspace/s2v_trt/blocks/block_00.onnx
+-rw-r--r-- 1 root root 488M May  9 04:18 /workspace/s2v_trt/blocks/block_00.pt
+root@C.36379754:/workspace/Wan2.2$ 
+```
+
+---
+[2026-05-09 12:15:30]
+Can I just exclude MHA manually? iThere is just a simple transformer inside, with a residual connection, right?
