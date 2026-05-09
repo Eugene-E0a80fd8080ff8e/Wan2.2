@@ -2204,3 +2204,9 @@ and
 > Capture 3–5 diffusion steps' inputs (e.g., steps 0, 4, 8, 12, 15 of a 16-step run), pass all as calibration data
 
 Do we need to capture that on different prompts? Or a single one is enough?
+
+---
+[2026-05-09 12:02:07]
+<ide_opened_file>The user opened the file /home/eugene/prj26/videogen1/Wan2.2/trt_conv/quantize_block_fp8.py in the IDE. This may or may not be related to the current task.</ide_opened_file>
+$ sh trt_blocks_phase3_fp8.sh 
+trt_blocks_phase3_fp8.sh: 29: Syntax error: "(" unexpected (expecting "done")

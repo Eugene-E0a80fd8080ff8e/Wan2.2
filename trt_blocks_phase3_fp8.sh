@@ -25,19 +25,25 @@ for onnx in "$BLOCKS_DIR"/block_[0-9][0-9].onnx; do
 
     # Prefer multi-sample snapshots (block_NN_sample_*.pt). Fall back to the
     # legacy single-sample block_NN.pt if no multi-sample files exist.
-    shopt -s nullglob
-    samples=("$BLOCKS_DIR/${base}_sample_"*.pt)
-    shopt -u nullglob
-    if [ ${#samples[@]} -eq 0 ]; then
-        samples=("$BLOCKS_DIR/$base.pt")
+    samples=""
+    n_samples=0
+    for f in "$BLOCKS_DIR/${base}_sample_"*.pt; do
+        if [ -f "$f" ]; then
+            samples="$samples $f"
+            n_samples=$((n_samples + 1))
+        fi
+    done
+    if [ "$n_samples" -eq 0 ]; then
+        samples="$BLOCKS_DIR/$base.pt"
+        n_samples=1
     fi
-    echo "[phase3_fp8] $base: ${#samples[@]} calibration sample(s)"
+    echo "[phase3_fp8] $base: $n_samples calibration sample(s)"
 
     if [ ! -f "$fp8_onnx" ]; then
         echo "[phase3_fp8] $base: quantizing to fp8 onnx"
         PYTHONPATH=/workspace/Wan2.2 python -m trt_conv.quantize_block_fp8 \
             --onnx "$onnx" \
-            --inputs "${samples[@]}" \
+            --inputs $samples \
             --out "$fp8_onnx" \
             --workdir "$WORKDIR" \
             --calibration_method entropy
